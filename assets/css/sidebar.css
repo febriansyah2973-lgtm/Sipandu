@@ -1,0 +1,277 @@
+/* --- GLOBAL SIDEBAR VARIABLES --- */
+:root {
+    --sidebar-width: 260px;
+    --sidebar-bg: #1e293b; /* Warna lebih gelap & modern (Slate-900 based) */
+    --sidebar-text: #94a3b8; /* Slate-400 */
+    --sidebar-hover-bg: rgba(255, 255, 255, 0.08);
+    --active-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); /* Biru Royal */
+    --active-shadow: 0 4px 12px rgba(37, 99, 235, 0.4); /* Glow effect */
+    --submenu-line-color: #334155; /* Warna garis pohon */
+}
+
+/* --- CONTAINER UTAMA --- */
+.sidebar {
+    background-color: var(--sidebar-bg) !important;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.2); /* Bayangan ke kanan lebih halus */
+    border-right: 1px solid rgba(255,255,255,0.05);
+}
+
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+
+/* --- HEADER SIDEBAR --- */
+.sidebar-header {
+    padding: 25px 20px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    background: radial-gradient(circle at top left, rgba(59,130,246,0.15), transparent 70%);
+}
+
+/* --- ITEM MENU UTAMA (PARENT) --- */
+.nav-link-custom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px; /* Padding diperbesar agar proporsional */
+    margin: 4px 15px; /* Margin kiri-kanan agar tombol "mengapung" */
+    color: var(--sidebar-text);
+    text-decoration: none;
+    border-radius: 12px; /* Sudut lebih bulat */
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); /* Animasi membal halus */
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    border: 1px solid transparent; /* Persiapan border */
+    position: relative;
+    overflow: hidden;
+}
+
+/* Hover Effect: Geser kanan + Ganti Background */
+.nav-link-custom:hover {
+    background-color: var(--sidebar-hover-bg);
+    color: #fff;
+    transform: translateX(5px); /* Geser sedikit biar dinamis */
+    padding-left: 25px; /* Text ikut geser */
+    border-color: rgba(255,255,255,0.1);
+}
+
+/* Active State: Gradient Mewah */
+.nav-link-custom.active-menu {
+    background: var(--active-gradient);
+    color: #fff;
+    box-shadow: var(--active-shadow);
+    font-weight: 600;
+    transform: scale(1.02); /* Sedikit membesar */
+}
+
+/* Icon Box agar Rapi Sejajar Vertikal */
+.icon-box {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    transition: transform 0.3s ease;
+}
+
+/* Animasi Icon saat Hover */
+.nav-link-custom:hover .icon-box {
+    transform: scale(1.2) rotate(5deg); /* Icon membesar & miring dikit */
+}
+
+.nav-link-custom.active-menu .icon-box {
+    color: #fff !important; /* Paksa putih saat aktif */
+}
+
+/* Panah Chevron */
+.fa-chevron-down {
+    font-size: 0.75rem;
+    transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55); /* Efek per membal */
+    opacity: 0.7;
+}
+.nav-link-custom[aria-expanded="true"] .fa-chevron-down {
+    transform: rotate(-180deg);
+    color: #fff;
+    opacity: 1;
+}
+
+.submenu-container {
+    padding-left: 45px;
+    padding-right: 15px;
+    position: relative;
+    margin-top: 5px;
+    margin-bottom: 10px;
+}
+
+.submenu-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 20px;
+    left: 32px;
+    width: 2px;
+    background-color: var(--submenu-line-color);
+    border-radius: 2px;
+}
+
+.submenu-item {
+    display: block;
+    padding: 10px 15px;
+    color: var(--sidebar-text);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    border-radius: 8px;
+    position: relative;
+    margin-bottom: 2px;
+}
+
+.submenu-item::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: -13px;
+    width: 10px;
+    height: 2px;
+    background-color: var(--submenu-line-color);
+    transition: width 0.3s, background-color 0.3s;
+}
+
+.submenu-item:hover {
+    color: #fff;
+    background-color: rgba(255,255,255,0.05);
+    transform: translateX(3px);
+}
+
+.submenu-item:hover::before {
+    background-color: #64748b;
+    width: 15px;
+    left: -18px;
+}
+
+.submenu-item.active {
+    color: #60a5fa; 
+    font-weight: 600;
+    background-color: rgba(59, 130, 246, 0.1);
+}
+
+.submenu-item.active::before {
+    background-color: #60a5fa;
+    width: 15px;
+    left: -18px;
+}
+
+.submenu-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #64748b;
+    font-weight: 800;
+    margin: 15px 0 5px 0;
+    display: block;
+}
+
+.nav-link-logout {
+    margin-top: 30px;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+}
+.nav-link-logout:hover {
+    background: rgba(239, 68, 68, 0.1) !important;
+    color: #fff !important;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+/* --- Master Sidebar Styling --- */
+
+/* Container Utama Sidebar */
+.nav-link-custom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    margin: 4px 10px;
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    transition: all 0.3s ease;
+    font-size: 0.95rem;
+}
+
+/* Hover Effect Menu Utama */
+.nav-link-custom:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    transform: translateX(5px); /* Geser sedikit pas di-hover */
+}
+
+/* State Aktif Menu Utama */
+.active-menu {
+    background: linear-gradient(90deg, rgba(78, 115, 223, 0.2) 0%, rgba(78, 115, 223, 0.05) 100%);
+    color: #fff !important;
+    border-left: 4px solid #4e73df;
+    font-weight: 600;
+}
+
+/* Box Icon */
+.icon-box {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    margin-right: 12px;
+    transition: transform 0.3s ease;
+}
+
+.nav-link-custom:hover .icon-box {
+    transform: scale(1.1) rotate(5deg);
+}
+
+/* --- Submenu Styling --- */
+
+.submenu-container {
+    padding: 5px 0 10px 45px; /* Kasih jarak masuk ke dalam */
+}
+
+.submenu-item {
+    display: block;
+    padding: 8px 15px;
+    font-size: 0.88rem;
+    color: rgba(255, 255, 255, 0.6);
+    text-decoration: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.2s ease;
+}
+
+/* Hover Submenu */
+.submenu-item:hover {
+    color: #36b9cc; /* Warna cyan cerah */
+    padding-left: 20px;
+    border-left: 1px solid #36b9cc;
+}
+
+/* State Aktif Submenu */
+.submenu-item.active {
+    color: #fff !important;
+    font-weight: bold;
+    border-left: 2px solid #fff;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
+}
+
+/* Animasi Fade Up buat Konten (Biar Halus) */
+.animate-fade-up {
+    animation: fadeUp 0.5s ease-out;
+}
+
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Khusus Logout */
+.nav-link-logout:hover {
+    background: rgba(231, 74, 59, 0.15);
+    color: #e74a3b !important;
+}
