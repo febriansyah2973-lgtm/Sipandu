@@ -1,5 +1,7 @@
 <?php
 require_once 'config/database.php';
+require_once 'config/csrf.php';
+$csrf_token = csrf_token_value();
 
 // NORMALISASI ROLE & AMBIL ID USER
 $role_asli    = $_SESSION['role'] ?? ''; 
@@ -113,10 +115,10 @@ if (isset($_GET['status']) && $_GET['status'] == 'success') {
                                     
                                     <?php if($role_check == 'pengawas' && $row['user_id'] != $id_user_aktif): ?>
                                         <div class="btn-group shadow-sm">
-                                            <a href="proses_izin.php?act=acc_pengawas&id=<?= $row['id'] ?>" class="btn btn-warning btn-sm px-3 fw-bold" onclick="return confirm('Validasi izin ini (Tahap 1)?')">
+                                            <a href="proses_izin.php?act=acc_pengawas&id=<?= $row['id'] ?>&csrf_token=<?= urlencode($csrf_token) ?>" class="btn btn-warning btn-sm px-3 fw-bold" onclick="return confirm('Validasi izin ini (Tahap 1)?')">
                                                 <i class="fas fa-check me-1"></i> Validasi
                                             </a>
-                                            <a href="proses_izin.php?act=reject&id=<?= $row['id'] ?>" class="btn btn-outline-danger btn-sm" onclick="return confirm('Tolak izin ini?')">
+                                            <a href="proses_izin.php?act=reject&id=<?= $row['id'] ?>&csrf_token=<?= urlencode($csrf_token) ?>" class="btn btn-outline-danger btn-sm" onclick="return confirm('Tolak izin ini?')">
                                                 <i class="fas fa-times"></i>
                                             </a>
                                         </div>
@@ -128,10 +130,10 @@ if (isset($_GET['status']) && $_GET['status'] == 'success') {
                                     
                                     <?php if($role_check == 'admin' || $role_check == 'administrator'): ?>
                                         <div class="btn-group shadow-sm">
-                                            <a href="proses_izin.php?act=acc_final&id=<?= $row['id'] ?>" class="btn btn-success btn-sm px-3 fw-bold" onclick="return confirm('Berikan persetujuan final (Tahap 2)?')">
+                                            <a href="proses_izin.php?act=acc_final&id=<?= $row['id'] ?>&csrf_token=<?= urlencode($csrf_token) ?>" class="btn btn-success btn-sm px-3 fw-bold" onclick="return confirm('Berikan persetujuan final (Tahap 2)?')">
                                                 <i class="fas fa-check-double me-1"></i> Final ACC
                                             </a>
-                                            <a href="proses_izin.php?act=reject&id=<?= $row['id'] ?>" class="btn btn-outline-danger btn-sm" onclick="return confirm('Tolak izin ini?')">
+                                            <a href="proses_izin.php?act=reject&id=<?= $row['id'] ?>&csrf_token=<?= urlencode($csrf_token) ?>" class="btn btn-outline-danger btn-sm" onclick="return confirm('Tolak izin ini?')">
                                                 <i class="fas fa-times"></i>
                                             </a>
                                         </div>

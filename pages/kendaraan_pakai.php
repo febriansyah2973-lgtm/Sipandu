@@ -1,4 +1,3 @@
-<link rel="stylesheet" href="assets/css/app.css">
 <style>
     .avatar-circle { width: 40px; height: 40px; background-color: #e3f2fd; color: #0d6efd; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; }
     .badge-soft-primary { background-color: #cff4fc; color: #055160; border: 1px solid #b6effb; }
@@ -7,6 +6,9 @@
 
 <?php
 require_once 'config/database.php';
+require_once 'config/csrf.php';
+$csrf_token = csrf_token_value();
+
 $data_pakai = []; 
 $list_kendaraan = [];
 
@@ -138,6 +140,7 @@ if (isset($_GET['status'])) {
             <form action="proses_kendaraan.php" method="POST">
                 <div class="modal-body p-4">
                     <input type="hidden" name="act" value="pakai">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
                     <input type="hidden" name="user_id" value="<?= $_SESSION['user_id'] ?? '' ?>">
 
                     <div class="mb-3">

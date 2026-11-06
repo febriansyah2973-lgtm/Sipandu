@@ -167,9 +167,12 @@ foreach($data as $r) {
                             <td class="text-start small text-muted"><?= $row['keterangan'] ?? '-' ?></td>
                             <td>
                                 <?php if(!empty($row['foto_bukti'])): ?>
-                                    <img src="uploads/patroli/<?= $row['foto_bukti'] ?>" 
+                                    <?php $pathTemuan = 'assets/img/temuan/' . $row['foto_bukti']; ?>
+                                    <?php $pathLegacy = 'uploads/patroli/' . $row['foto_bukti']; ?>
+                                    <?php $fotoPath = file_exists($pathTemuan) ? $pathTemuan : $pathLegacy; ?>
+                                    <img src="<?= $fotoPath ?>" 
                                          class="img-thumbnail-patroli" 
-                                         onclick="previewImage('uploads/patroli/<?= $row['foto_bukti'] ?>', 'Foto Bukti Temuan')">
+                                         onclick="previewImage('<?= $fotoPath ?>', 'Foto Bukti Temuan')">
                                 <?php else: ?> - <?php endif; ?>
                             </td>
                         </tr>

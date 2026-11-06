@@ -1,114 +1,299 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+/* ============================================
+   SIPANDU - Dashboard Command Center Telemetry CSS
+   ============================================ */
 
 :root {
-    --dash-bg: #f5f7fa;
-    --dash-card: #ffffff;
-    --dash-text: #1e293b;
-    --dash-text-muted: #64748b;
-    --dash-border: #e2e8f0;
+    --dash-bg: #090d16;
+    --dash-card: #111827;
+    --dash-card-alt: #131c2e;
+    --dash-text: #f1f5f9;
+    --dash-text-muted: #94a3b8;
+    --dash-border: rgba(255, 255, 255, 0.08);
 }
 
 body {
     background-color: var(--dash-bg) !important;
     font-family: 'Inter', sans-serif !important;
+    color: var(--dash-text) !important;
 }
 
-.card-dash {
-    background: var(--dash-card);
-    border: 1px solid rgba(226, 232, 240, 0.8);
-    border-radius: 12px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
-    padding: 24px;
-    height: 100%;
-    transition: transform 0.2s, box-shadow 0.2s;
-    position: relative;
-    overflow: hidden;
+/* Dashboard Container Shell */
+.dashboard-shell {
+    max-width: 100%;
+    margin: 0 auto;
 }
 
-.card-dash:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
-}
-
-.icon-shape {
-    width: 48px;
-    height: 48px;
-    border-radius: 10px; 
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    margin-bottom: 16px;
-}
-
-.icon-primary { background-color: #e0e7ff; color: #4338ca; } 
-.icon-success { background-color: #dcfce7; color: #15803d; } 
-.icon-info    { background-color: #e0f2fe; color: #0369a1; } 
-.icon-danger  { background-color: #fee2e2; color: #b91c1c; } 
-
-.dash-label {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--dash-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.dash-value {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--dash-text);
-    margin-top: 5px;
-    line-height: 1;
-}
-
-.card-chart-header {
+/* Dashboard Header Banner */
+.dashboard-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
+    background: var(--dash-card);
+    border: 1px solid var(--dash-border);
+    border-radius: 8px;
+    padding: 18px 24px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
-.chart-title {
-    font-size: 1.1rem;
-    font-weight: 600;
+.dashboard-top-title h3 {
+    font-size: 1.3rem;
+    font-weight: 800;
     color: var(--dash-text);
+    margin: 0 0 4px 0;
+    letter-spacing: -0.01em;
+}
+
+.dashboard-top-title p {
+    font-size: 0.85rem;
+    color: var(--dash-text-muted);
     margin: 0;
 }
 
-.table-dash {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-}
-
-.table-dash th {
-    background-color: #f8fafc;
-    font-size: 0.75rem;
-    font-weight: 600;
+.status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(16, 185, 129, 0.12);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 6px 14px;
+    border-radius: 9999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--dash-text-muted);
-    padding: 12px 24px;
-    border-top: 1px solid var(--dash-border);
-    border-bottom: 1px solid var(--dash-border);
-    text-align: left;
 }
 
-.table-dash td {
-    padding: 16px 24px;
-    border-bottom: 1px solid var(--dash-border);
+/* SOS Alert Banner */
+.dashboard-alert {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: 8px;
+    padding: 16px 20px;
+    color: #f87171;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.15);
+}
+
+/* Metrics Grid (4 Equal Columns) */
+.dashboard-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+@media (max-width: 1024px) {
+    .dashboard-metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 576px) {
+    .dashboard-metrics-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Metric Card */
+.dashboard-metric-card {
+    background: var(--dash-card);
+    border: 1px solid var(--dash-border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.dashboard-metric-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(56, 189, 248, 0.35);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.dash-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.dash-value {
+    font-size: 2rem;
+    font-weight: 800;
     color: var(--dash-text);
-    font-size: 0.9rem;
-    vertical-align: middle;
+    line-height: 1.1;
+    font-feature-settings: "tnum";
 }
 
-.table-dash tr:last-child td { border-bottom: none; }
-
-.badge-soft {
-    padding: 4px 10px;
-    border-radius: 50rem;
-    font-size: 0.75rem;
-    font-weight: 600;
+.dash-note {
+    font-size: 0.8rem;
+    color: var(--dash-text-muted);
 }
-.badge-soft-success { background: #dcfce7; color: #166534; }
-.badge-soft-danger  { background: #fee2e2; color: #991b1b; }
+
+/* Progress bar inside card */
+.dashboard-progress {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 9999px;
+    overflow: hidden;
+    width: 100%;
+    min-width: 90px;
+}
+
+.dashboard-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #38bdf8, #0284c7);
+    border-radius: 9999px;
+    transition: width 0.5s ease;
+}
+
+/* Icon Shapes */
+.icon-shape {
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    flex-shrink: 0;
+}
+
+.icon-primary { 
+    background-color: rgba(56, 189, 248, 0.12); 
+    color: #38bdf8; 
+    border: 1px solid rgba(56, 189, 248, 0.25);
+} 
+
+.icon-success { 
+    background-color: rgba(16, 185, 129, 0.12); 
+    color: #34d399; 
+    border: 1px solid rgba(16, 185, 129, 0.25);
+} 
+
+.icon-info { 
+    background-color: rgba(14, 165, 233, 0.12); 
+    color: #38bdf8; 
+    border: 1px solid rgba(14, 165, 233, 0.25);
+} 
+
+.icon-danger { 
+    background-color: rgba(239, 68, 68, 0.12); 
+    color: #f87171; 
+    border: 1px solid rgba(239, 68, 68, 0.25);
+} 
+
+/* Main Dashboard Grid (Chart + Log) */
+.dashboard-main-grid {
+    display: grid;
+    grid-template-columns: 2.2fr 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 992px) {
+    .dashboard-main-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.dashboard-chart-card {
+    background: var(--dash-card);
+    border: 1px solid var(--dash-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    height: 100%;
+}
+
+.chart-wrapper {
+    position: relative;
+    height: 250px;
+    width: 100%;
+    margin-top: 14px;
+}
+
+.dashboard-log-card {
+    background: var(--dash-card);
+    border: 1px solid var(--dash-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    height: 100%;
+}
+
+.dashboard-log-item {
+    background: transparent !important;
+    border-bottom: 1px solid var(--dash-border) !important;
+    padding: 14px 18px !important;
+    color: var(--dash-text) !important;
+    transition: background 0.15s ease;
+}
+
+.dashboard-log-item:hover {
+    background: rgba(255, 255, 255, 0.03) !important;
+}
+
+.badge-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
+.badge-status-success {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-status-danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Hero & Petugas Mobile/Card Styling */
+.dashboard-hero-card {
+    background: linear-gradient(135deg, #131c2e 0%, #0d1424 100%) !important;
+    border: 1px solid rgba(56, 189, 248, 0.25) !important;
+    border-radius: 8px !important;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.hero-overlay {
+    position: absolute;
+    right: -20px;
+    bottom: -20px;
+    font-size: 8rem;
+    opacity: 0.05;
+    color: #38bdf8;
+    pointer-events: none;
+}
+
+.hero-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #f1f5f9;
+}
+
+.hero-subtitle {
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.hero-count {
+    font-size: 3rem;
+    font-weight: 800;
+    color: #38bdf8;
+    line-height: 1;
+}

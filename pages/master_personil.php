@@ -1,6 +1,11 @@
-<link rel="stylesheet" href="assets/css/master.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <?php
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+require_once 'config/csrf.php';
+$csrf_token = csrf_token_value();
+
 if ($role !== 'admin') {
     echo "<script>alert('Akses Ditolak!'); window.location='index.php?page=dashboard';</script>";
     exit;
@@ -17,6 +22,7 @@ $dataPersonil = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $list_cabang = $pdo->query("SELECT id, nama_cabang FROM cabang ORDER BY nama_cabang ASC")->fetchAll(PDO::FETCH_ASSOC);
 $list_shift = $pdo->query("SELECT id, nama_shift FROM shifts ORDER BY id ASC")->fetchAll(PDO::FETCH_ASSOC);
 ?>
+<script>window.APP_CSRF_TOKEN = <?= json_encode($csrf_token) ?>;</script>
 
 <div class="d-flex justify-content-between align-items-end mb-4 animate-fade-up">
     <div>
@@ -31,9 +37,13 @@ $list_shift = $pdo->query("SELECT id, nama_shift FROM shifts ORDER BY id ASC")->
 <div class="card-master shadow-sm border-0 animate-fade-up">
     <div class="card-header-action d-flex flex-wrap gap-3 p-3">
         <div class="d-flex align-items-center gap-2 me-auto">
-            <span class="badge bg-light text-secondary border rounded-pill px-3 fw-normal small">
+            <span class="badge bg-primary-subtle text-primary border border-primary rounded-pill px-3 fw-semibold small">
                 <?= count($dataPersonil) ?> Total
             </span>
+        </div>
+        <div class="input-group input-group-sm search-input-group" style="width: 280px;">
+            <span class="input-group-text bg-light border-0"><i class="fas fa-search"></i></span>
+            <input type="text" class="form-control bg-light border-0 rounded-pill" id="searchInput" placeholder="Cari nama, username, atau cabang...">
         </div>
     </div>
 
@@ -42,6 +52,7 @@ $list_shift = $pdo->query("SELECT id, nama_shift FROM shifts ORDER BY id ASC")->
             <thead>
                 <tr>
                     <th width="5%">NO</th>
+                    <th>KODE</th>
                     <th>PENGGUNA</th>
                     <th>USERNAME</th>
                     <th>JABATAN</th>
@@ -53,23 +64,18 @@ $list_shift = $pdo->query("SELECT id, nama_shift FROM shifts ORDER BY id ASC")->
             </thead>
             <tbody>
                 <?php $no = 1; foreach ($dataPersonil as $row): 
-                    $nama_foto = $row['foto_profil'] ?? $row['foto'] ?? '';
-                    $fotoPath = (!empty($nama_foto) && $nama_foto !== 'default.png') ? 'uploads/profil/' . $nama_foto : '';
                     $cabangNama = $row['nama_cabang'] ?? 'Pusat';
                     $shiftNama = $row['nama_shift'] ?? 'Non-Shift';
                 ?>
                 <tr>
                     <td><span class="text-secondary fw-medium ps-2"><?= $no++ ?></span></td>
+                    <td><span class="badge bg-light text-secondary border rounded-pill small font-monospace"><?= htmlspecialchars($row['kode_personil'] ?? ('USR-' . str_pad($row['id'], 3, '0', STR_PAD_LEFT))) ?></span></td>
                     <td>
                         <div class="d-flex align-items-center">
                             <div class="avatar-initial me-3 bg-light border" style="width: 35px; height: 35px; overflow: hidden; border-radius: 8px;">
-                                <?php if($fotoPath && file_exists($fotoPath)): ?>
-                                    <img src="<?= $fotoPath ?>" style="width: 100%; height: 100%; object-fit: cover;">
-                                <?php else: ?>
-                                    <div class="w-100 h-100 d-flex align-items-center justify-content-center bg-primary-subtle text-primary fw-bold small">
-                                        <?= strtoupper(substr($row['nama_lengkap'], 0, 1)) ?>
-                                    </div>
-                                <?php endif; ?>
+                                <div class="w-100 h-100 d-flex align-items-center justify-content-center bg-primary-subtle text-primary fw-bold small">
+                                    <?= strtoupper(substr($row['nama_lengkap'], 0, 1)) ?>
+                                </div>
                             </div>
                             <span class="fw-bold text-dark"><?= htmlspecialchars($row['nama_lengkap']) ?></span>
                         </div>
@@ -84,20 +90,21 @@ $list_shift = $pdo->query("SELECT id, nama_shift FROM shifts ORDER BY id ASC")->
                         </span>
                     </td>
                     <td class="text-center">
-                        <div class="d-flex justify-content-center gap-1">
-                            <button type="button" class="btn-action btn-detail-personil text-info" style="border:none; background:transparent;"
+                        <div class="d-flex justify-content-center gap-1 btn-actions">
+                            <button type="button" class="btn-action btn-detail-personil text-info"
+                                data-kode="<?= htmlspecialchars($row['kode_personil'] ?? ('USR-' . str_pad($row['id'], 3, '0', STR_PAD_LEFT)), ENT_QUOTES, 'UTF-8') ?>"
                                 data-nama="<?= htmlspecialchars($row['nama_lengkap'], ENT_QUOTES, 'UTF-8') ?>"
                                 data-username="<?= htmlspecialchars($row['username'], ENT_QUOTES, 'UTF-8') ?>"
                                 data-role="<?= htmlspecialchars($row['role'], ENT_QUOTES, 'UTF-8') ?>"
                                 data-status="<?= htmlspecialchars($row['status'], ENT_QUOTES, 'UTF-8') ?>"
                                 data-cabang="<?= htmlspecialchars($cabangNama, ENT_QUOTES, 'UTF-8') ?>"
                                 data-shift="<?= htmlspecialchars($shiftNama, ENT_QUOTES, 'UTF-8') ?>"
-                                data-foto="<?= htmlspecialchars($fotoPath, ENT_QUOTES, 'UTF-8') ?>"
+                                data-foto=""
                                 title="Detail Personil">
                                 <i class="fas fa-eye"></i>
                             </button>
 
-                            <button type="button" class="btn-action btn-edit-personil text-primary" style="border:none; background:transparent;"
+                            <button type="button" class="btn-action btn-edit-personil text-primary"
                                 data-id="<?= $row['id'] ?>"
                                 data-nama="<?= htmlspecialchars($row['nama_lengkap'], ENT_QUOTES, 'UTF-8') ?>"
                                 data-username="<?= htmlspecialchars($row['username'], ENT_QUOTES, 'UTF-8') ?>"
@@ -109,7 +116,7 @@ $list_shift = $pdo->query("SELECT id, nama_shift FROM shifts ORDER BY id ASC")->
                                 <i class="fas fa-pen"></i>
                             </button>
 
-                            <button type="button" class="btn-action btn-mutasi-personil text-warning" style="border:none; background:transparent;"
+                            <button type="button" class="btn-action btn-mutasi-personil text-warning"
                                 data-id="<?= $row['id'] ?>"
                                 data-nama="<?= htmlspecialchars($row['nama_lengkap'], ENT_QUOTES, 'UTF-8') ?>"
                                 data-cabang_asal_id="<?= htmlspecialchars($row['cabang_id'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
@@ -118,7 +125,7 @@ $list_shift = $pdo->query("SELECT id, nama_shift FROM shifts ORDER BY id ASC")->
                                 <i class="fas fa-exchange-alt"></i>
                             </button>
 
-                            <button type="button" class="btn-action btn-delete-personil text-danger" style="border:none; background:transparent;" data-id="<?= $row['id'] ?>" title="Hapus Data">
+                            <button type="button" class="btn-action btn-delete-personil text-danger" data-id="<?= $row['id'] ?>" title="Hapus Data">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
@@ -139,6 +146,7 @@ $list_shift = $pdo->query("SELECT id, nama_shift FROM shifts ORDER BY id ASC")->
             </div>
             <form action="proses_master_personil.php" method="POST" enctype="multipart/form-data" id="formPersonil">
                 <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
                     <input type="hidden" name="id" id="inputIdPersonil">
                     <input type="hidden" name="act" id="inputActPersonil" value="tambah">
                     
@@ -202,8 +210,8 @@ $list_shift = $pdo->query("SELECT id, nama_shift FROM shifts ORDER BY id ASC")->
                     </div>
                 </div>
                 <div class="modal-footer border-0 bg-light">
-                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary rounded-pill px-4">Simpan Data</button>
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4 fw-semibold" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold">Simpan Data</button>
                 </div>
             </form>
         </div>
@@ -224,7 +232,8 @@ $list_shift = $pdo->query("SELECT id, nama_shift FROM shifts ORDER BY id ASC")->
                 </div>
                 
                 <h4 class="fw-bold text-dark mb-1" id="detailPersonilNama">-</h4>
-                <p class="text-primary mb-3 font-monospace small" id="detailPersonilUsername">-</p>
+                <p class="text-primary mb-1 font-monospace small" id="detailPersonilUsername">-</p>
+                <p class="text-secondary mb-3 small" id="detailPersonilKode">-</p>
 
                 <div class="row text-start g-3 mt-2 bg-light p-3 rounded-4">
                     <div class="col-6">
@@ -261,6 +270,7 @@ $list_shift = $pdo->query("SELECT id, nama_shift FROM shifts ORDER BY id ASC")->
             </div>
             <form action="proses_master_personil.php" method="POST">
                 <div class="modal-body p-4 pt-3">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
                     <input type="hidden" name="act" value="mutasi">
                     <input type="hidden" name="id" id="mutasiIdUser">
                     <input type="hidden" name="cabang_asal_id" id="mutasiCabangAsalId">

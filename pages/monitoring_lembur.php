@@ -4,6 +4,9 @@
  * Fitur Isolasi Data (Kacamata Kuda) terintegrasi
  */
 require_once 'config/database.php';
+require_once 'config/csrf.php';
+
+$csrf_token = csrf_token_value();
 
 $id_login   = $_SESSION['id_user'] ?? $_SESSION['user_id'];
 $my_role    = strtolower($_SESSION['role'] ?? '');
@@ -25,8 +28,9 @@ try {
         $params = ['tgl' => $filter_tgl, 'id_login' => $id_login];
     }
 
-    $sql = "SELECT l.*, u.nama_lengkap, u.role as jabatan_user
+    $sql = "SELECT l.*, u.nama_lengkap, u.role as jabatan_user, pt.nama_lengkap as nama_approver
             FROM lembur l JOIN users u ON l.id_user = u.id 
+            LEFT JOIN users pt ON l.id_p_tujuan = pt.id
             $where ORDER BY l.tgl_input DESC";
             
     $stmt = $pdo->prepare($sql);
@@ -40,6 +44,7 @@ try {
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>window.APP_CSRF_TOKEN = <?= json_encode($csrf_token) ?>;</script>
 
 <style>
     .status-pending { background-color: #E1EFFE !important; color: #1E429F !important; }
@@ -97,18 +102,27 @@ try {
                     <span class="badge-soft <?= $cls ?>"><?= $txt ?></span>
                 </div>
                 <div class="col-md-4 text-end">
-                    <button class="btn-action-detail me-1" onclick="showOvtDetail(<?= htmlspecialchars(json_encode($l)) ?>)">LIHAT DETAIL</button>
+                    <?php
+                        // Flag yang sama dipakai tombol inline maupun tombol di modal detail.
+                        $canApprovePengawas = ($l['status_lembur'] == 0 && $my_role == 'pengawas' && $l['id_user'] != $id_login);
+                        $canFinalApprove = ($l['status_lembur'] == 1 && ($my_role == 'admin' || $my_role == 'administrator'));
+                        $detailPayload = array_merge($l, [
+                            'can_approve_pengawas' => $canApprovePengawas,
+                            'can_final_approve' => $canFinalApprove,
+                        ]);
+                    ?>
+                    <button class="btn-action-detail me-1" onclick="showOvtDetail(<?= htmlspecialchars(json_encode($detailPayload)) ?>)">LIHAT DETAIL</button>
                     
                     <?php 
                     // Pengawas hanya bisa approve jika status 0 DAN yang lembur BUKAN dirinya sendiri
-                    if($l['status_lembur'] == 0 && $my_role == 'pengawas' && $l['id_user'] != $id_login): 
+                    if($canApprovePengawas): 
                     ?>
                         <button onclick="handleApproval(<?= $l['id_lembur'] ?>, 1)" class="btn btn-success btn-sm rounded-3 px-3 fw-bold">SETUJU</button>
                         <button onclick="handleApproval(<?= $l['id_lembur'] ?>, 9)" class="btn btn-danger btn-sm rounded-3 px-3 fw-bold ms-1">TOLAK</button>
                         
                     <?php 
                     // Admin melakukan Final Approve
-                    elseif($l['status_lembur'] == 1 && ($my_role == 'admin' || $my_role == 'administrator')): 
+                    elseif($canFinalApprove): 
                     ?>
                         <button onclick="handleApproval(<?= $l['id_lembur'] ?>, 2)" class="btn btn-primary btn-sm rounded-3 px-3 fw-bold">FINAL APPROVE</button>
                     <?php endif; ?>
@@ -129,6 +143,24 @@ try {
  * DETAIL LENGKAP: Menampilkan semua informasi pengajuan
  */
 function showOvtDetail(data) {
+    const statusMap = {
+        0: { text: 'Menunggu Persetujuan Pengawas', cls: 'status-pending' },
+        1: { text: 'Disetujui Pengawas (Menunggu Final Approve Admin)', cls: 'status-approved' },
+        2: { text: 'Final Approved', cls: 'status-approved' },
+        9: { text: 'Ditolak', cls: 'status-rejected' }
+    };
+    const statusInfo = statusMap[data.status_lembur] ?? statusMap[0];
+
+    let actionButtons = '';
+    if (data.can_approve_pengawas == true || data.can_approve_pengawas == 1) {
+        actionButtons = `
+            <button class="btn btn-success btn-sm rounded-3 px-3 fw-bold me-2" onclick="Swal.close(); handleApproval(${data.id_lembur}, 1);">SETUJU</button>
+            <button class="btn btn-danger btn-sm rounded-3 px-3 fw-bold" onclick="Swal.close(); handleApproval(${data.id_lembur}, 9);">TOLAK</button>
+        `;
+    } else if (data.can_final_approve == true || data.can_final_approve == 1) {
+        actionButtons = `<button class="btn btn-primary btn-sm rounded-3 px-3 fw-bold" onclick="Swal.close(); handleApproval(${data.id_lembur}, 2);">FINAL APPROVE</button>`;
+    }
+
     Swal.fire({
         title: '<div class="text-start fw-bold" style="font-size: 18px;">Rincian Pengajuan Lembur</div>',
         html: `
@@ -149,16 +181,34 @@ function showOvtDetail(data) {
                     <span class="text-muted">Waktu (24 Jam)</span>
                     <span class="fw-bold text-primary">${data.jam_mulai} s/d ${data.jam_selesai} WIB</span>
                 </div>
+                <div class="d-flex justify-content-between border-bottom pb-1 mb-2">
+                    <span class="text-muted">Persetujuan Oleh</span>
+                    <span class="fw-bold text-dark">${data.nama_approver || 'Belum ditentukan'}</span>
+                </div>
+                <div class="d-flex justify-content-between border-bottom pb-1 mb-2">
+                    <span class="text-muted">Status Proses</span>
+                    <span class="badge-soft ${statusInfo.cls}">${statusInfo.text}</span>
+                </div>
                 <div class="mt-3">
                     <div class="text-muted mb-1">Keterangan / Tugas Pekerjaan:</div>
                     <div class="p-3 rounded-3 bg-light" style="font-style: italic; color: #4B5563; border: 1px solid #E5E7EB;">
                         "${data.keterangan || 'Tidak ada keterangan tambahan.'}"
                     </div>
                 </div>
+                ${data.komentar_pengawas ? `
+                <div class="mt-3">
+                    <div class="text-muted mb-1">Catatan Pengawas:</div>
+                    <div class="p-3 rounded-3 bg-light border-start border-3 border-info" style="color: #4B5563;">
+                        ${data.komentar_pengawas}
+                    </div>
+                </div>` : ''}
+                ${actionButtons ? `<div class="mt-4 text-end">${actionButtons}</div>` : ''}
             </div>
         `,
+        showConfirmButton: !actionButtons,
         confirmButtonText: 'Tutup Detail',
         confirmButtonColor: '#6366F1',
+        showCloseButton: !!actionButtons,
         customClass: { popup: 'rounded-4' }
     });
 }
@@ -182,7 +232,8 @@ async function handleApproval(id, status) {
 
     if (text !== undefined) {
         const note = encodeURIComponent(text);
-        window.location.href = `proses_presensi.php?act=approve_lembur&id=${id}&status=${status}&note=${note}`;
+        const csrf = encodeURIComponent(window.APP_CSRF_TOKEN || '');
+        window.location.href = `proses_presensi.php?act=approve_lembur&id=${id}&status=${status}&note=${note}&csrf_token=${csrf}`;
     }
 }
 </script>

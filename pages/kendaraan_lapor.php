@@ -1,4 +1,3 @@
-<link rel="stylesheet" href="assets/css/app.css">
 <style>
     .avatar-circle { width: 40px; height: 40px; background-color: #fff1f2; color: #e11d48; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; }
     .search-box { max-width: 250px; }
@@ -6,6 +5,9 @@
 
 <?php
 require_once 'config/database.php';
+require_once 'config/csrf.php';
+$csrf_token = csrf_token_value();
+
 if (isset($_GET['status'])) {
     if ($_GET['status'] == 'success') {
         echo "<script>Swal.fire({icon: 'success', title: 'Laporan Terkirim', text: 'Status kendaraan telah diperbarui.', timer: 2000, showConfirmButton: false});</script>";
@@ -29,7 +31,7 @@ $data_lapor = $pdo->query($sql)->fetchAll();
             <p class="text-secondary mb-0 small">Manajemen data unit yang mengalami kendala teknis atau kehilangan.</p>
         </div>
         <button class="btn btn-danger rounded-3 px-4 shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalLapor">
-            <i class="fas fa-exclamation-triangle me-2"></i> Lapor Kejadian
+            <i class="fas fa-exclamation-triangle me-2"></i> Lapor Masalah Kendaraan
         </button>
     </div>
 
@@ -106,6 +108,7 @@ $data_lapor = $pdo->query($sql)->fetchAll();
             <form action="proses_kendaraan.php" method="POST">
                 <div class="modal-body p-4">
                     <input type="hidden" name="act" value="lapor_masalah">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
                     
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-dark">Unit Kendaraan</label>

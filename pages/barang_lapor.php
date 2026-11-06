@@ -1,4 +1,3 @@
-<link rel="stylesheet" href="assets/css/app.css">
 <style>
     .avatar-circle { width: 40px; height: 40px; background-color: #fff1f2; color: #e11d48; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; }
     .badge-soft-danger { background-color: #fecdd3; color: #9f1239; border: 1px solid #fda4af; }
@@ -7,13 +6,6 @@
 
 <?php
 require_once 'config/database.php';
-if (isset($_GET['status'])) {
-    if ($_GET['status'] == 'success') {
-        echo "<script>Swal.fire({icon: 'success', title: 'Laporan Diterima', text: 'Data kerusakan barang telah dicatat.', timer: 2000, showConfirmButton: false});</script>";
-    } elseif ($_GET['status'] == 'error') {
-        echo "<script>Swal.fire('Gagal', '" . ($_GET['msg'] ?? 'Terjadi kesalahan database') . "', 'error');</script>";
-    }
-}
 $all_barang = $pdo->query("SELECT id, nama_barang, kode_barang, jml_baik FROM barang ORDER BY nama_barang ASC")->fetchAll();
 $sql = "SELECT bm.*, b.nama_barang, b.kode_barang, u.nama_lengkap 
         FROM barang_masalah bm
@@ -34,7 +26,7 @@ $data_lapor = $pdo->query($sql)->fetchAll();
             <p class="text-secondary mb-0 small">Manajemen laporan barang inventaris yang rusak atau hilang.</p>
         </div>
         <button class="btn btn-danger rounded-3 px-4 shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalLaporBarang">
-            <i class="fas fa-exclamation-triangle me-2"></i> Lapor Kejadian
+            <i class="fas fa-exclamation-triangle me-2"></i> Lapor Masalah Barang
         </button>
     </div>
 
@@ -111,7 +103,7 @@ $data_lapor = $pdo->query($sql)->fetchAll();
                 <h5 class="modal-title fw-bold text-danger"><i class="fas fa-bullhorn me-2"></i>Lapor Masalah Barang</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form action="proses_barang.php" method="POST">
+            <form action="proses_barang_lapor.php" method="POST">
                 <div class="modal-body p-4">
                     <input type="hidden" name="act" value="lapor_masalah_barang">
                     

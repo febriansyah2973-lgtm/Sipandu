@@ -1,5 +1,10 @@
-<link rel="stylesheet" href="assets/css/master.css">
 <?php
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+require_once 'config/csrf.php';
+$csrf_token = csrf_token_value();
+
 if ($role !== 'admin') {
     echo "<script>alert('Akses Ditolak!'); window.location='index.php?page=dashboard';</script>";
     exit;
@@ -8,6 +13,7 @@ require_once 'config/database.php';
 $stmt = $pdo->query("SELECT * FROM shifts ORDER BY jam_masuk ASC");
 $dataShift = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
+<script>window.APP_CSRF_TOKEN = <?= json_encode($csrf_token) ?>;</script>
 
 <div class="d-flex justify-content-between align-items-end mb-4 animate-fade-up">
     <div>
@@ -19,10 +25,14 @@ $dataShift = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </button>
 </div>
 
-<div class="card-master">
-    <div class="card-header-action">
+<div class="card-master shadow-sm border-0 animate-fade-up">
+    <div class="card-header-action d-flex flex-wrap gap-3 p-3">
         <div class="d-flex align-items-center gap-2 me-auto">
-            <span class="badge bg-light text-secondary border rounded-pill px-3 py-2 fw-bold"><?= count($dataShift) ?> Shift Terdaftar</span>
+            <span class="badge bg-primary-subtle text-primary border border-primary rounded-pill px-3 py-2 fw-semibold"><?= count($dataShift) ?> Shift Terdaftar</span>
+        </div>
+        <div class="input-group input-group-sm search-input-group" style="width: 280px;">
+            <span class="input-group-text bg-light border-0"><i class="fas fa-search"></i></span>
+            <input type="text" class="form-control bg-light border-0 rounded-pill" id="searchInput" placeholder="Cari nama shift atau jam...">
         </div>
     </div>
 
@@ -31,6 +41,7 @@ $dataShift = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <thead>
                 <tr>
                     <th width="5%">No</th>
+                    <th>Kode</th>
                     <th>Nama Shift</th>
                     <th>Jam Masuk</th>
                     <th>Jam Pulang</th>
@@ -51,6 +62,7 @@ $dataShift = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 ?>
                 <tr>
                     <td><span class="text-secondary fw-medium ps-2"><?= $no++ ?></span></td>
+                    <td><span class="badge bg-light text-secondary border rounded-pill small font-monospace"><?= htmlspecialchars($row['kode_shift'] ?? ('SFT-' . str_pad($row['id'], 3, '0', STR_PAD_LEFT))) ?></span></td>
                     
                     <td>
                         <div class="d-flex align-items-center gap-3">
@@ -78,9 +90,10 @@ $dataShift = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </td>
 
                     <td class="text-center">
-                        <div class="d-flex justify-content-center gap-1">
-                            <button type="button" class="btn-action btn-detail-shift text-info" style="border:none; background:transparent;"
+                        <div class="d-flex justify-content-center gap-1 btn-actions">
+                            <button type="button" class="btn-action btn-detail-shift text-info"
                                 title="Detail"
+                                data-kode="<?= htmlspecialchars($row['kode_shift'] ?? ('SFT-' . str_pad($row['id'], 3, '0', STR_PAD_LEFT)), ENT_QUOTES, 'UTF-8') ?>"
                                 data-nama="<?= htmlspecialchars($row['nama_shift'], ENT_QUOTES, 'UTF-8') ?>"
                                 data-masuk="<?= date('H:i', strtotime($row['jam_masuk'])) ?>"
                                 data-pulang="<?= date('H:i', strtotime($row['jam_pulang'])) ?>"
@@ -90,7 +103,7 @@ $dataShift = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <i class="fas fa-eye"></i>
                             </button>
 
-                            <button type="button" class="btn-action btn-edit-shift text-primary" style="border:none; background:transparent;"
+                            <button type="button" class="btn-action btn-edit-shift text-primary"
                                 title="Edit"
                                 data-id="<?= $row['id'] ?>"
                                 data-nama="<?= htmlspecialchars($row['nama_shift'], ENT_QUOTES, 'UTF-8') ?>"
@@ -99,7 +112,7 @@ $dataShift = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <i class="fas fa-pen"></i>
                             </button>
                             
-                            <button type="button" class="btn-action btn-delete-shift text-danger" style="border:none; background:transparent;"
+                            <button type="button" class="btn-action btn-delete-shift text-danger"
                                 title="Hapus" 
                                 data-id="<?= $row['id'] ?>">
                                 <i class="fas fa-trash"></i>
@@ -122,17 +135,18 @@ $dataShift = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
             <form action="proses_master_shift.php" method="POST" id="formShift">
                 <div class="modal-body p-4">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
                     <input type="hidden" name="id" id="inputIdShift">
                     <input type="hidden" name="act" id="inputActShift" value="tambah">
                     
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Nama Shift</label>
-                        <input type="text" name="nama_shift" id="inputNamaShift" class="form-control bg-light border-0 py-2" placeholder="Contoh: Shift Pagi" required>
+                        <input type="text" name="nama_shift" id="inputNamaShift" class="form-control bg-light border-0 rounded-3 py-2" placeholder="Contoh: Shift Pagi" required>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-success">Jam Masuk</label>
-                        <input type="time" name="jam_masuk" id="inputMasukShift" class="form-control bg-light border-0 py-2 fw-bold" required>
+                        <input type="time" name="jam_masuk" id="inputMasukShift" class="form-control bg-light border-0 rounded-3 py-2 fw-bold" required>
                     </div>
 
                     <div class="mb-0">
@@ -160,7 +174,8 @@ $dataShift = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <i id="detailShiftIcon" class="fas fa-clock"></i>
                 </div>
                 
-                <h4 class="fw-bold text-dark mb-3" id="detailShiftNama">-</h4>
+                <h4 class="fw-bold text-dark mb-1" id="detailShiftNama">-</h4>
+                <p class="text-secondary small mb-3" id="detailShiftKode">-</p>
 
                 <div class="bg-light rounded-4 p-3 text-start mb-3">
                     <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">

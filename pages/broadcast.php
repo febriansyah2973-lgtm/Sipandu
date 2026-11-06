@@ -1,4 +1,9 @@
 <div class="container-fluid px-0">
+    <?php
+    require_once 'config/csrf.php';
+    $csrf_token = csrf_token_value();
+    ?>
+
     <div class="mb-4 animate-fade-up">
         <h3 class="fw-bold text-dark mb-1">Broadcast Pengumuman ??</h3>
         <p class="text-secondary small">Kirim pesan massal ke seluruh personil secara real-time.</p>
@@ -20,6 +25,7 @@
                 <div class="card-body p-4 p-md-5">
                     <form action="proses_broadcast.php" method="POST">
                         <input type="hidden" name="act" value="send_broadcast">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
 
                         <div class="mb-4">
                             <label class="form-label small fw-bold text-secondary">KATEGORI PESAN</label>
@@ -39,7 +45,7 @@
                                     </label>
                                 </div>
                                 <div class="col-md-4">
-                                    <input type="radio" class="btn-check" name="kategori" id="cat_alert" value="alert">
+                                    <input type="radio" class="btn-check" name="kategori" id="cat_alert" value="broadcast_alert">
                                     <label class="btn btn-outline-danger w-100 py-3 rounded-4" for="cat_alert">
                                         <i class="fas fa-bolt d-block mb-2 fa-lg"></i>
                                         Darurat / SOS

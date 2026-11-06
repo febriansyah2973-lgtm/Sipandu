@@ -1,21 +1,44 @@
-<link rel="stylesheet" href="assets/css/master.css">
-
 <?php
 require_once 'config/database.php';
+require_once 'config/csrf.php';
+$csrf_token = csrf_token_value();
+
 $filterStatus = $_GET['status_filter'] ?? '';
+$filterKategori = $_GET['kategori_filter'] ?? '';
 $sql = "SELECT p.*, c.nama_lokasi, u.nama_lengkap 
         FROM patroli p 
         JOIN checkpoints c ON p.checkpoint_id = c.id 
         JOIN users u ON p.user_id = u.id 
         WHERE p.status_temuan = 'Temuan'";
+$params = [];
 
 if ($filterStatus != '') {
-    $sql .= " AND p.status_penanganan = '$filterStatus'";
+    $sql .= " AND p.status_penanganan = :status";
+    $params['status'] = $filterStatus;
+}
+
+if ($filterKategori != '') {
+    $sql .= " AND p.keterangan LIKE :kategori";
+    $params['kategori'] = "%[{$filterKategori}]%";
 }
 
 $sql .= " ORDER BY p.waktu_scan DESC";
-$stmt = $pdo->query($sql);
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
 $dataTemuan = $stmt->fetchAll();
+
+function parseTemuanKeterangan($keterangan) {
+    $parsed = ['judul' => '', 'kategori' => '', 'detail' => $keterangan];
+    if (preg_match('/^\[(.*?)\]\s*\[(.*?)\]\s*(.*)$/', $keterangan, $m)) {
+        $parsed['judul'] = $m[1];
+        $parsed['kategori'] = $m[2];
+        $parsed['detail'] = $m[3];
+    } elseif (preg_match('/^\[(.*?)\]\s*(.*)$/', $keterangan, $m)) {
+        $parsed['judul'] = $m[1];
+        $parsed['detail'] = $m[2];
+    }
+    return $parsed;
+}
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4 animate-fade-up">
@@ -26,12 +49,25 @@ $dataTemuan = $stmt->fetchAll();
 </div>
 
 <div class="card-master mb-4 shadow-sm">
-    <div class="p-3 d-flex gap-2 overflow-auto">
-        <a href="index.php?page=patroli_temuan" class="btn <?= $filterStatus == '' ? 'btn-primary' : 'btn-light border' ?> btn-sm rounded-pill px-4">Semua Laporan</a>
-        <a href="index.php?page=patroli_temuan&status_filter=Baru" class="btn <?= $filterStatus == 'Baru' ? 'btn-danger' : 'btn-light border' ?> btn-sm rounded-pill px-4">Baru</a>
-        <a href="index.php?page=patroli_temuan&status_filter=Proses" class="btn <?= $filterStatus == 'Proses' ? 'btn-warning text-white' : 'btn-light border' ?> btn-sm rounded-pill px-4">Proses</a>
-        <a href="index.php?page=patroli_temuan&status_filter=Selesai" class="btn <?= $filterStatus == 'Selesai' ? 'btn-success' : 'btn-light border' ?> btn-sm rounded-pill px-4">Selesai</a>
-    </div>
+        <div class="card-header-action p-3 gap-2 overflow-auto align-items-center">
+            <a href="index.php?page=patroli_temuan" class="btn <?= $filterStatus == '' ? 'btn-primary' : 'btn-outline-secondary' ?> btn-sm rounded-pill px-4">Semua Laporan</a>
+            <a href="index.php?page=patroli_temuan&status_filter=Baru<?= $filterKategori ? '&kategori_filter=' . urlencode($filterKategori) : '' ?>" class="btn <?= $filterStatus == 'Baru' ? 'btn-danger' : 'btn-outline-secondary' ?> btn-sm rounded-pill px-4">Baru</a>
+            <a href="index.php?page=patroli_temuan&status_filter=Proses<?= $filterKategori ? '&kategori_filter=' . urlencode($filterKategori) : '' ?>" class="btn <?= $filterStatus == 'Proses' ? 'btn-warning text-white' : 'btn-outline-secondary' ?> btn-sm rounded-pill px-4">Proses</a>
+            <a href="index.php?page=patroli_temuan&status_filter=Selesai<?= $filterKategori ? '&kategori_filter=' . urlencode($filterKategori) : '' ?>" class="btn <?= $filterStatus == 'Selesai' ? 'btn-success' : 'btn-outline-secondary' ?> btn-sm rounded-pill px-4">Selesai</a>
+
+            <form method="GET" class="d-flex gap-2 ms-auto align-items-center">
+                <input type="hidden" name="page" value="patroli_temuan">
+                <input type="hidden" name="status_filter" value="<?= htmlspecialchars($filterStatus) ?>">
+                <select name="kategori_filter" class="form-select form-select-sm bg-light border-0 rounded-pill" style="min-width: 180px;">
+                    <option value="">Semua Kategori</option>
+                    <option value="Gangguan" <?= $filterKategori == 'Gangguan' ? 'selected' : '' ?>>Gangguan</option>
+                    <option value="Kebocoran" <?= $filterKategori == 'Kebocoran' ? 'selected' : '' ?>>Kebocoran</option>
+                    <option value="Kerusakan" <?= $filterKategori == 'Kerusakan' ? 'selected' : '' ?>>Kerusakan</option>
+                    <option value="Kecurangan" <?= $filterKategori == 'Kecurangan' ? 'selected' : '' ?>>Kecurangan</option>
+                    <option value="Lainnya" <?= $filterKategori == 'Lainnya' ? 'selected' : '' ?>>Lainnya</option>
+                </select>
+                <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3">Filter</button>
+            </form>
 </div>
 
 
@@ -56,13 +92,18 @@ $dataTemuan = $stmt->fetchAll();
                     <small class="text-secondary small fw-bold"><i class="far fa-clock me-1"></i><?= date('d M, H:i', strtotime($row['waktu_scan'])) ?></small>
                 </div>
 
-                <h6 class="fw-bold text-dark mb-1"><?= htmlspecialchars($row['nama_lokasi']) ?></h6>
-                <div class="text-muted small mb-3 lh-sm" style="min-height: 45px;">
-                    <?= htmlspecialchars($row['keterangan']) ?>
+                <?php $parsed = parseTemuanKeterangan($row['keterangan']); ?>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <h6 class="fw-bold text-dark mb-0"><?= htmlspecialchars($parsed['judul'] ?: $row['nama_lokasi']) ?></h6>
+                    <?php if (!empty($parsed['kategori'])): ?>
+                        <span class="badge bg-info-subtle text-info rounded-pill small py-2 px-3"><?= htmlspecialchars($parsed['kategori']) ?></span>
+                    <?php endif; ?>
+                </div>
+                <div class="text-muted small mb-3 lh-sm patrol-description">
+                    <?= htmlspecialchars($parsed['detail'] ?: $row['keterangan']) ?>
                 </div>
 
-                <div class="bg-light rounded mb-3 overflow-hidden text-center position-relative group-hover-zoom" style="height: 160px; cursor: pointer;" 
-                     onclick="lihatFoto('assets/img/temuan/<?= $row['foto_bukti'] ?>', 'Temuan di <?= htmlspecialchars($row['nama_lokasi']) ?>')">
+                <div class="bg-light rounded mb-3 overflow-hidden text-center position-relative patrol-photo-card" onclick="lihatFoto('assets/img/temuan/<?= $row['foto_bukti'] ?>', 'Temuan di <?= htmlspecialchars($row['nama_lokasi']) ?>')">
                     <?php if($row['foto_bukti']): ?>
                         <img src="assets/img/temuan/<?= $row['foto_bukti'] ?>" class="w-100 h-100 object-fit-cover transition-all">
                         <div class="position-absolute top-50 start-50 translate-middle opacity-0 group-hover-opacity-100 text-white">
@@ -77,10 +118,10 @@ $dataTemuan = $stmt->fetchAll();
 
                 <div class="d-flex justify-content-between align-items-center pt-2 border-top">
                     <div class="lh-1">
-                        <small class="text-muted d-block" style="font-size: 0.65rem;">Pelapor:</small>
+                        <small class="text-muted d-block small-text-xs">Pelapor:</small>
                         <span class="small fw-bold text-dark"><?= $row['nama_lengkap'] ?></span>
                     </div>
-                    <button class="btn btn-outline-primary btn-sm rounded-pill px-3" 
+                    <button class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm" 
                             onclick="updateStatusTemuan(<?= $row['id'] ?>, '<?= $row['status_penanganan'] ?>')">
                         <i class="fas fa-edit me-1"></i> Status
                     </button>
@@ -113,6 +154,7 @@ function updateStatusTemuan(id, currentStatus) {
             formData.append('act', 'update_status_temuan');
             formData.append('id', id);
             formData.append('status_baru', result.value);
+            formData.append('csrf_token', <?= json_encode($csrf_token) ?>);
 
             fetch('proses_patroli.php', {
                 method: 'POST',

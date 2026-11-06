@@ -1,16 +1,30 @@
 <?php
-session_start();
 require_once 'config/database.php';
 require_once 'config/helper_notif.php';
+require_once 'config/auth.php';
+require_once 'config/csrf.php';
 
 header('Content-Type: application/json');
 
+auth_session_start();
+$id_user = auth_current_user_id();
+if ($id_user <= 0) {
+    http_response_code(401);
+    echo json_encode(['status' => 'error', 'message' => 'Unauthenticated']);
+    exit;
+}
+
 $act = $_POST['act'] ?? '';
-$id_user = $_SESSION['id_user']; // ID Petugas (Pengirim)
-$nama_petugas = $_SESSION['nama_lengkap'];
+$nama_petugas = auth_current_name();
 
 if ($act == 'panic_button') {
-    $koordinat = $_POST['koordinat'] ?? 'Lokasi tidak terdeteksi';
+    if (!csrf_validate_request()) {
+        http_response_code(419);
+        echo json_encode(['status' => 'error', 'message' => 'CSRF token tidak valid']);
+        exit;
+    }
+
+    $koordinat = trim((string)($_POST['koordinat'] ?? 'Lokasi tidak terdeteksi'));
     $waktu = date('H:i:s');
 
     try {
@@ -30,7 +44,12 @@ if ($act == 'panic_button') {
 
         echo json_encode(['status' => 'success']);
     } catch (Exception $e) {
-        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        http_response_code(500);
+        echo json_encode(['status' => 'error', 'message' => 'Gagal mengirim SOS']);
     }
+    exit;
 }
+
+http_response_code(400);
+echo json_encode(['status' => 'error', 'message' => 'Aksi tidak valid']);
 ?>

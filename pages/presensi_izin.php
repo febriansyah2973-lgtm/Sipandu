@@ -4,7 +4,13 @@
  * Frontend (Tampilan)
  */
 require_once 'config/database.php';
+require_once 'config/csrf.php';
 date_default_timezone_set('Asia/Jakarta');
+
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+$csrf_token = csrf_token_value();
 
 $id_user = $_SESSION['id_user'] ?? $_SESSION['user_id'] ?? null;
 $today = date('Y-m-d');
@@ -54,6 +60,7 @@ $today = date('Y-m-d');
             
             <form action="proses_izin.php" method="POST" enctype="multipart/form-data" onsubmit="gabungkanAlasan()">
                 <div class="modal-body p-4">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
                     
                     <input type="hidden" name="jenis_izin" id="val_status"> 
                     

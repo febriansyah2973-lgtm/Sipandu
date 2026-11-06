@@ -1,0 +1,7 @@
+timestamp,event,user_id,role,ip,context
+2026-09-10T20:17:34+07:00,chat.send,3,admin,127.0.0.1,"{""reply_to_id"":null,""has_attachment"":0}"
+2026-09-10T20:17:15+07:00,chat.send,3,admin,127.0.0.1,"{""reply_to_id"":null,""has_attachment"":0}"
+2026-09-10T20:16:41+07:00,chat.send,3,admin,127.0.0.1,"{""reply_to_id"":null,""has_attachment"":0}"
+2026-09-10T20:16:34+07:00,chat.send,3,admin,127.0.0.1,"{""reply_to_id"":null,""has_attachment"":0}"
+2026-09-10T20:16:32+07:00,chat.send,3,admin,127.0.0.1,"{""reply_to_id"":null,""has_attachment"":0}"
+2026-08-24T22:20:07+07:00,presensi.masuk,3,admin,::1,"{""jam"":""22:20:07"",""lokasi"":""-6.2415419,106.6724229""}"

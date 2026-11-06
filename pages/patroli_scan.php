@@ -1,9 +1,10 @@
-<link rel="stylesheet" href="assets/css/master.css">
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
 <?php
 require_once 'config/database.php';
+require_once 'config/csrf.php';
 date_default_timezone_set('Asia/Jakarta');
+$csrf_token = csrf_token_value();
 
 // Pastikan ID User konsisten
 if (!isset($_SESSION['user_id'])) { $_SESSION['user_id'] = 1; }
@@ -40,22 +41,22 @@ $riwayat = $stmt->fetchAll(PDO::FETCH_ASSOC); // Tambahkan FETCH_ASSOC
             
             <div class="p-4 text-center">
                 <div id="reader-wrapper" class="scanner-wrapper position-relative">
-                    <button type="button" id="btnSwitchCam" class="btn btn-sm btn-light border position-absolute top-0 end-0 m-2 z-3 rounded-circle" style="width:40px; height:40px;">
+                    <button type="button" id="btnSwitchCam" class="btn btn-sm btn-light border position-absolute top-0 end-0 m-2 z-3 rounded-circle patrol-switch-btn">
                         <i class="fas fa-sync-alt"></i>
                     </button>
-                    <div id="reader" style="width: 100%; border-radius: 12px; overflow: hidden; border: 2px dashed #cbd5e1; background: #f8f9fa;"></div>
+                    <div id="reader" class="scanner-frame"></div>
                 </div>
 
                 <div id="manual-input-wrapper" class="d-none mt-3">
                     <div class="form-floating mb-3">
-                        <input type="text" class="form-control fw-bold" id="inputKodeLokasi" placeholder="LOC-XXX" style="text-transform: uppercase;">
-                        <label>Kode Lokasi</label>
+                        <input type="text" class="form-control bg-light border-0 rounded-3 py-2 fw-bold text-uppercase" id="inputKodeLokasi" placeholder="LOC-XXX">
+                        <label class="text-secondary">Kode Lokasi</label>
                     </div>
-                    <button type="button" class="btn btn-primary w-100 py-3 fw-bold" id="btnSubmitManual">Kirim Kehadiran</button>
+                    <button type="button" class="btn btn-primary rounded-pill w-100 py-3 fw-bold shadow-sm" id="btnSubmitManual">Kirim Kehadiran</button>
                 </div>
 
                 <hr class="my-4 opacity-25">
-                <button class="btn btn-outline-secondary btn-sm rounded-pill px-4" id="btnToggleMode">
+                <button class="btn btn-outline-secondary btn-sm rounded-pill px-4 shadow-sm" id="btnToggleMode">
                     <i class="fas fa-keyboard me-1"></i> Masalah Kamera? Input Manual
                 </button>
             </div>
@@ -80,11 +81,11 @@ $riwayat = $stmt->fetchAll(PDO::FETCH_ASSOC); // Tambahkan FETCH_ASSOC
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <h6 class="mb-1 fw-bold text-dark"><?= htmlspecialchars($log['nama_lokasi']) ?></h6>
-                                    <span class="badge <?= $log['status_temuan'] == 'Aman' ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger' ?> border rounded-pill" style="font-size: 0.65rem;">
+                                    <span class="badge <?= $log['status_temuan'] == 'Aman' ? 'bg-success-subtle text-success border border-success' : 'bg-danger-subtle text-danger border border-danger' ?> rounded-pill small py-1 px-2">
                                         <?= $log['status_temuan'] ?>
                                     </span>
                                 </div>
-                                <span class="badge bg-light text-dark border fw-bold font-monospace"><?= $log['jam'] ?></span>
+                                <span class="badge bg-primary-subtle text-primary border border-primary fw-bold font-monospace"><?= $log['jam'] ?></span>
                             </div>
                         </div>
                         <?php endforeach; ?>
@@ -96,3 +97,6 @@ $riwayat = $stmt->fetchAll(PDO::FETCH_ASSOC); // Tambahkan FETCH_ASSOC
 </div>
 
 <script src="assets/js/patroli_scan.js?v=<?= time() ?>"></script>
+<script>
+window.APP_CSRF_TOKEN = <?= json_encode($csrf_token) ?>;
+</script>

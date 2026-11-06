@@ -1,43 +1,63 @@
 <?php
 require_once 'config/database.php';
 require_once 'config/helper_notif.php'; // <--- Tambahan: Saraf Notifikasi
-session_start();
+require_once 'config/auth.php';
+require_once 'config/csrf.php';
+require_once 'config/audit.php';
+
+auth_session_start();
+$petugas = auth_require_login('login.php');
+$csrf_token = csrf_token_value();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['act']) && $_POST['act'] == 'add_visitor') {
-    $nama     = trim($_POST['nama_tamu']);
-    $instansi = trim($_POST['instansi']);
-    $hp       = trim($_POST['no_hp']);
-    $bertemu  = trim($_POST['bertemu_dengan']);
-    $tujuan   = trim($_POST['keperluan']);
-    
-    // Sinkronisasi ID User
-    $petugas  = $_SESSION['id_user'] ?? $_SESSION['user_id'] ?? 1;
+    if (!csrf_validate_request()) {
+        http_response_code(419);
+        exit('CSRF token tidak valid');
+    }
 
-    $sql = "INSERT INTO visitors (user_id, nama_tamu, instansi, no_hp, bertemu_dengan, keperluan, waktu_masuk, status) 
-            VALUES (?, ?, ?, ?, ?, ?, NOW(), 'Masuk')";
-    
-    if ($pdo->prepare($sql)->execute([$petugas, $nama, $instansi, $hp, $bertemu, $tujuan])) {
+    $nama     = trim((string)($_POST['nama_tamu'] ?? ''));
+    $instansi = trim((string)($_POST['instansi'] ?? ''));
+    $hp       = trim((string)($_POST['no_hp'] ?? ''));
+    $bertemu  = trim((string)($_POST['bertemu_dengan'] ?? ''));
+    $tujuan   = trim((string)($_POST['keperluan'] ?? ''));
+
+    if ($nama === '' || $bertemu === '' || $tujuan === '') {
+        echo "<script>document.addEventListener('DOMContentLoaded', function() { Swal.fire('Validasi Gagal', 'Nama tamu, bertemu dengan, dan keperluan wajib diisi.', 'warning'); });</script>";
+    } else {
+
+        $sql = "INSERT INTO visitors (user_id, nama_tamu, instansi, no_hp, bertemu_dengan, keperluan, waktu_masuk, status) 
+                VALUES (?, ?, ?, ?, ?, ?, NOW(), 'Masuk')";
         
-        // --- LOGIC NOTIFIKASI: Kabari Admin ada tamu ---
-        $admins = getAdminIds($pdo);
-        sendNotification(
-            $pdo, 
-            $admins, 
-            'info', 
-            'Tamu Baru Tiba ??', 
-            "$nama ($instansi) tiba di lobi untuk bertemu $bertemu.", 
-            'index.php?page=visit_riwayat'
-        );
+        if ($pdo->prepare($sql)->execute([$petugas, $nama, $instansi, $hp, $bertemu, $tujuan])) {
+            audit_log_event('visitor.checkin', [
+                'nama_tamu' => $nama,
+                'instansi' => $instansi,
+                'bertemu_dengan' => $bertemu
+            ]);
+        
+            // --- LOGIC NOTIFIKASI: Kabari Admin ada tamu ---
+            $admins = getAdminIds($pdo);
+            sendNotification(
+                $pdo, 
+                $admins, 
+                'info', 
+                'Tamu Baru Tiba ??', 
+                "$nama ($instansi) tiba di lobi untuk bertemu $bertemu.", 
+                'index.php?page=visit_riwayat'
+            );
 
-        echo "<script>
-            Swal.fire({
-                icon: 'success', 
-                title: 'Check-In Sukses', 
-                html: 'Selamat datang, <b>$nama</b>.<br>Data kunjungan telah tercatat.', 
-                timer: 2000, 
-                showConfirmButton: false
-            }).then(() => { window.location.href = 'index.php?page=visit_riwayat'; });
-        </script>";
+            echo "<script>
+                document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'success', 
+                    title: 'Check-In Sukses', 
+                    html: 'Selamat datang, <b>$nama</b>.<br>Data kunjungan telah tercatat.', 
+                    timer: 2000, 
+                    showConfirmButton: false
+                }).then(() => { window.location.href = 'index.php?page=visit_riwayat'; });
+                });
+            </script>";
+        }
     }
 }
 ?>
@@ -62,6 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['act']) && $_POST['act'
                 <div class="card-body p-4 p-md-5">
                     <form method="POST">
                         <input type="hidden" name="act" value="add_visitor">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
 
                         <div class="mb-4">
                             <h6 class="text-primary fw-bold text-uppercase small ls-1 mb-3"><i class="fas fa-user me-2"></i>Identitas Pengunjung</h6>

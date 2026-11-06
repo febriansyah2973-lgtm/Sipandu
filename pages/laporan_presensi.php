@@ -29,38 +29,20 @@
     
     .form-control-pill { border-radius: 8px; border: 1px solid #ced4da; padding: 10px 15px; }
     .live-badge { font-size: 10px; vertical-align: middle; margin-left: 10px; }
+    .text-late { color: #dc3545; font-weight: 700; }
+    .foto-presensi { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid #dee2e6; }
 </style>
 
 <?php
 require_once 'config/database.php';
+require_once 'config/presensi_report.php';
 
 $mulai = $_GET['mulai'] ?? date('Y-m-01');
 $selesai = $_GET['selesai'] ?? date('Y-m-d');
 $search_name = $_GET['search_name'] ?? '';
 
-$sql = "SELECT p.*, u.nama_lengkap 
-        FROM presensi p 
-        JOIN users u ON p.id_user = u.id 
-        WHERE (p.tgl_presensi BETWEEN :mulai AND :selesai)";
-
-$params = ['mulai' => $mulai, 'selesai' => $selesai];
-if (!empty($search_name)) {
-    $sql .= " AND u.nama_lengkap LIKE :search_name";
-    $params['search_name'] = "%$search_name%";
-}
-$sql .= " ORDER BY p.tgl_presensi ASC, p.jam_masuk ASC";
-
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$data = $stmt->fetchAll();
-
-$h = 0; $l = 0; $i = 0; $a = 0;
-foreach($data as $r) {
-    if($r['status'] == 'Hadir' || $r['status'] == 'Terlambat') $h++;
-    if(!empty($r['jam_lembur_mulai'])) $l++;
-    if(in_array($r['status'], ['Izin', 'Sakit', 'Cuti'])) $i++;
-    if($r['status'] == 'Alpha') $a++;
-}
+$data = presensi_report_fetch($pdo, $mulai, $selesai, $search_name);
+['h' => $h, 'l' => $l, 'i' => $i, 'a' => $a] = presensi_report_stats($data);
 ?>
 
 <div class="animate-fade-up px-2">
@@ -141,34 +123,18 @@ foreach($data as $r) {
                         <th width="5%" class="py-3">No</th>
                         <th>Tanggal</th>
                         <th class="text-start">Nama Personil</th>
+                        <th>Shift</th>
                         <th>Masuk</th>
                         <th>Pulang</th>
                         <th>Lembur</th>
+                        <th>Lokasi GPS</th>
+                        <th>Foto</th>
                         <th>Status</th>
                         <th>Keterangan</th>
                     </tr>
                 </thead>
                 <tbody class="small" id="table-body">
-                    <?php if(empty($data)): ?>
-                        <tr><td colspan="8" class="text-center py-5 text-muted">Data tidak ditemukan.</td></tr>
-                    <?php else: $no=1; foreach($data as $row): ?>
-                        <tr class="text-center">
-                            <td><?= $no++ ?></td>
-                            <td><?= date('d/m/Y', strtotime($row['tgl_presensi'])) ?></td>
-                            <td class="text-start">
-                                <div class="fw-bold text-dark"><?= $row['nama_lengkap'] ?></div>
-                                <small class="text-muted">ID: PEG-<?= $row['id_user'] ?></small>
-                            </td>
-                            <td><span class="badge bg-light text-dark border"><?= $row['jam_masuk'] ? substr($row['jam_masuk'], 0, 5) : '-' ?></span></td>
-                            <td><span class="badge bg-light text-dark border"><?= $row['jam_pulang'] ? substr($row['jam_pulang'], 0, 5) : '-' ?></span></td>
-                            <td class="text-primary fw-bold"><?= $row['jam_lembur_mulai'] ? substr($row['jam_lembur_mulai'], 0, 5) . " - " . substr($row['jam_lembur_selesai'], 0, 5) : '-' ?></td>
-                            <td>
-                                <?php $st = $row['status']; $bg = ($st == 'Hadir' ? 'success' : 'warning'); ?>
-                                <span class="badge bg-<?= $bg ?> rounded-pill px-3"><?= strtoupper($st) ?></span>
-                            </td>
-                            <td class="text-muted small"><?= $row['keterangan'] ?: '-' ?></td>
-                        </tr>
-                    <?php endforeach; endif; ?>
+                    <?= presensi_report_rows($data) ?>
                 </tbody>
             </table>
         </div>
@@ -186,7 +152,7 @@ function refreshData() {
     const selesai = document.getElementById('f_selesai').value;
     const search = document.getElementById('f_search').value;
 
-    fetch(`ajax/fetch_presensi_realtime.php?mulai=${mulai}&selesai=${selesai}&search_name=${search}`)
+    fetch(`ajax/fetch_presensi_realtime.php?mulai=${mulai}&selesai=${selesai}&search_name=${encodeURIComponent(search)}`)
     .then(res => res.json())
     .then(res => {
         // Update Statistik
@@ -196,28 +162,7 @@ function refreshData() {
         document.getElementById('val-a').innerText = res.stats.a;
 
         // Update Tabel
-        let html = "";
-        if(res.data.length === 0) {
-            html = '<tr><td colspan="8" class="text-center py-5 text-muted">Data tidak ditemukan.</td></tr>';
-        } else {
-            res.data.forEach((row, index) => {
-                const badgeBg = (row.status === 'Hadir' ? 'success' : 'warning');
-                html += `<tr class="text-center">
-                    <td>${index + 1}</td>
-                    <td>${formatDate(row.tgl_presensi)}</td>
-                    <td class="text-start">
-                        <div class="fw-bold text-dark">${row.nama_lengkap}</div>
-                        <small class="text-muted">ID: PEG-${row.id_user}</small>
-                    </td>
-                    <td><span class="badge bg-light text-dark border">${row.jam_masuk ? row.jam_masuk.substring(0,5) : '-'}</span></td>
-                    <td><span class="badge bg-light text-dark border">${row.jam_pulang ? row.jam_pulang.substring(0,5) : '-'}</span></td>
-                    <td class="text-primary fw-bold">${row.jam_lembur_mulai ? row.jam_lembur_mulai.substring(0,5) + " - " + row.jam_lembur_selesai.substring(0,5) : '-'}</td>
-                    <td><span class="badge bg-${badgeBg} rounded-pill px-3">${row.status.toUpperCase()}</span></td>
-                    <td class="text-muted small">${row.keterangan || '-'}</td>
-                </tr>`;
-            });
-        }
-        document.getElementById('table-body').innerHTML = html;
+        document.getElementById('table-body').innerHTML = res.html;
     });
 }
 

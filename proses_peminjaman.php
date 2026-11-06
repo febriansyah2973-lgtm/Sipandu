@@ -1,24 +1,32 @@
 <?php
 // 1. KONEKSI & SESSION
 require_once 'config/database.php';
-session_start();
+require_once 'config/auth.php';
+require_once 'config/csrf.php';
+require_once 'config/audit.php';
+
+auth_session_start();
 
 // 2. PROTEKSI KEAMANAN
-if (!isset($_SESSION['id_user'])) {
-    header("Location: login.php");
-    exit();
+if (!csrf_validate_request()) {
+    http_response_code(419);
+    exit('CSRF token tidak valid');
 }
 
-$user_id   = $_SESSION['id_user'];
-$nama_user = $_SESSION['nama_lengkap'];
+$user_id   = auth_require_login();
+$nama_user = auth_current_name();
 $act       = $_POST['act'] ?? '';
 
 try {
     // 3. LOGIKA PINJAM BARANG
     if ($act == 'pinjam') {
-        $barang_id = $_POST['barang_id'];
+        $barang_id = (int)($_POST['barang_id'] ?? 0);
         $jumlah    = (int) $_POST['jumlah'];
-        $ket       = htmlspecialchars($_POST['keterangan']);
+        $ket       = htmlspecialchars(trim($_POST['keterangan'] ?? ''));
+
+        if ($barang_id <= 0 || $jumlah <= 0 || $ket === '') {
+            throw new Exception("Data peminjaman tidak valid.");
+        }
 
         // Mulai Transaksi Database (Mencegah data korup/stok ngaco)
         $pdo->beginTransaction();
@@ -47,6 +55,11 @@ try {
         $sqlUpdate = "UPDATE barang SET jml_baik = jml_baik - ? WHERE id = ?";
         $stmt_upd = $pdo->prepare($sqlUpdate);
         $stmt_upd->execute([$jumlah, $barang_id]);
+        audit_log_event('barang.pinjam', [
+            'barang_id' => $barang_id,
+            'jumlah' => $jumlah,
+            'keterangan' => $ket
+        ]);
 
         // D. (OPSIONAL) SIMPAN KE LOG SISTEM (Biar ketahuan siapa yang input)
         $log_msg = "$nama_user meminjam $jumlah {$barang['nama_barang']}";

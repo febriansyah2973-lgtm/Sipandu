@@ -27,6 +27,10 @@ class DahuaAPI {
         return "{$this->protocol}://{$this->ip}:{$this->port}/cgi-bin/mjpg/video.cgi?channel={$channel}&subtype=1";
     }
     private function sendRequest($url) {
+        if (!function_exists('curl_init')) {
+            return false;
+        }
+
         $ch = curl_init();
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,

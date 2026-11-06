@@ -1,4 +1,3 @@
-<link rel="stylesheet" href="assets/css/master.css">
 <?php
 // 1. Proteksi Role (Sesuai kode Bapak)
 if (strtolower($role) !== 'admin' && strtolower($role) !== 'administrator') {

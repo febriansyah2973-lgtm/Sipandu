@@ -1,19 +1,35 @@
 <?php
-session_start();
 require_once 'config/database.php';
+require_once 'config/csrf.php';
+require_once 'config/auth.php';
 
-$act = $_GET['act'] ?? $_POST['act'];
+auth_session_start();
+auth_require_login('index.php?page=login');
+auth_require_roles(['admin', 'administrator']);
+
+if (!csrf_validate_request()) {
+    http_response_code(419);
+    exit('CSRF token tidak valid');
+}
+
+$act = $_GET['act'] ?? $_POST['act'] ?? '';
 $targetDir = "assets/img/barang/";
 if (!file_exists($targetDir)) { mkdir($targetDir, 0777, true); }
 
 try {
     if ($act == 'tambah') {
-        $kode   = $_POST['kode_barang'];
-        $nama   = $_POST['nama_barang'];
-        $baik   = $_POST['jml_baik'];
-        $rusak  = $_POST['jml_rusak'];
-        $hilang = $_POST['jml_hilang'];
-        $lokasi = $_POST['lokasi'];
+        $kode   = trim($_POST['kode_barang'] ?? '');
+        $nama   = trim($_POST['nama_barang'] ?? '');
+        $baik   = max(0, (int)($_POST['jml_baik'] ?? 0));
+        $rusak  = max(0, (int)($_POST['jml_rusak'] ?? 0));
+        $hilang = max(0, (int)($_POST['jml_hilang'] ?? 0));
+        $lokasi = trim($_POST['lokasi'] ?? '');
+
+        if ($kode === '' || $nama === '') {
+            header("Location: index.php?page=master_barang&status=invalid");
+            exit;
+        }
+
         $fotoNama = null;
 
         if (!empty($_FILES['foto']['name'])) {
@@ -26,14 +42,21 @@ try {
         $stmt->execute([$kode, $nama, $baik, $rusak, $hilang, $lokasi, $fotoNama]);
 
         header("Location: index.php?page=master_barang");
+        exit;
 
     } elseif ($act == 'edit') {
-        $id     = $_POST['id'];
-        $nama   = $_POST['nama_barang'];
-        $baik   = $_POST['jml_baik'];
-        $rusak  = $_POST['jml_rusak'];
-        $hilang = $_POST['jml_hilang'];
-        $lokasi = $_POST['lokasi'];
+        $id     = (int)($_POST['id'] ?? 0);
+        $nama   = trim($_POST['nama_barang'] ?? '');
+        $baik   = max(0, (int)($_POST['jml_baik'] ?? 0));
+        $rusak  = max(0, (int)($_POST['jml_rusak'] ?? 0));
+        $hilang = max(0, (int)($_POST['jml_hilang'] ?? 0));
+        $lokasi = trim($_POST['lokasi'] ?? '');
+
+        if ($id <= 0 || $nama === '') {
+            header("Location: index.php?page=master_barang&status=invalid");
+            exit;
+        }
+
         if (!empty($_FILES['foto']['name'])) {
             $ext = pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION);
             $fotoNama = "brg_" . time() . "." . $ext;
@@ -53,9 +76,15 @@ try {
         }
 
         header("Location: index.php?page=master_barang");
+        exit;
 
     } elseif ($act == 'hapus') {
-        $id = $_GET['id'];
+        $id = (int)($_GET['id'] ?? $_POST['id'] ?? 0);
+        if ($id <= 0) {
+            header("Location: index.php?page=master_barang&status=invalid");
+            exit;
+        }
+
         $stmt = $pdo->prepare("SELECT foto_barang FROM barang WHERE id = ?");
         $stmt->execute([$id]);
         $img = $stmt->fetchColumn();
@@ -63,9 +92,14 @@ try {
 
         $pdo->prepare("DELETE FROM barang WHERE id=?")->execute([$id]);
         header("Location: index.php?page=master_barang");
+        exit;
     }
 
 } catch (PDOException $e) {
-    die("Error: " . $e->getMessage());
+    header("Location: index.php?page=master_barang&status=error");
+    exit;
 }
+
+header("Location: index.php?page=master_barang");
+exit;
 ?>

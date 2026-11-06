@@ -1,5 +1,10 @@
-<link rel="stylesheet" href="assets/css/master.css">
 <?php
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+require_once 'config/csrf.php';
+$csrf_token = csrf_token_value();
+
 if ($role !== 'admin') {
     echo "<script>alert('Akses Ditolak!'); window.location='index.php?page=dashboard';</script>";
     exit;
@@ -8,6 +13,7 @@ require_once 'config/database.php';
 $stmt = $pdo->query("SELECT * FROM kendaraan ORDER BY jenis ASC, no_polisi ASC");
 $dataKendaraan = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
+<script>window.APP_CSRF_TOKEN = <?= json_encode($csrf_token) ?>;</script>
 
 <div class="d-flex justify-content-between align-items-end mb-4 animate-fade-up">
     <div>
@@ -19,15 +25,15 @@ $dataKendaraan = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </button>
 </div>
 
-<div class="card-master">
-    <div class="card-header-action d-flex flex-wrap gap-3">
+<div class="card-master shadow-sm border-0 animate-fade-up">
+    <div class="card-header-action d-flex flex-wrap gap-3 p-3">
         <div class="d-flex align-items-center gap-2 me-auto">
-            <span class="badge bg-light text-secondary border rounded-pill px-2"><?= count($dataKendaraan) ?> Unit</span>
+            <span class="badge bg-primary-subtle text-primary border border-primary rounded-pill px-3 fw-semibold small"><?= count($dataKendaraan) ?> Unit</span>
         </div>
 
         <div class="d-flex align-items-center gap-2">
             <i class="fas fa-filter text-secondary small"></i>
-            <select id="filterStatus" class="form-select form-select-sm border-0 bg-light fw-bold text-secondary" style="width: 150px; cursor: pointer;">
+            <select id="filterStatus" class="form-select form-select-sm border-0 bg-light fw-bold text-secondary rounded-3" style="width: 150px; cursor: pointer;">
                 <option value="">Semua Status</option>
                 <option value="siap">Siap</option>
                 <option value="servis">Servis</option>
@@ -35,9 +41,9 @@ $dataKendaraan = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </select>
         </div>
 
-        <div class="input-group input-group-sm" style="width: 250px;">
-            <span class="input-group-text bg-light border-end-0 ps-3"><i class="fas fa-search text-secondary"></i></span>
-            <input type="text" class="form-control bg-light border-start-0 ps-2" id="searchInput" placeholder="Cari nopol atau merk...">
+        <div class="input-group input-group-sm search-input-group" style="width: 280px;">
+            <span class="input-group-text bg-light border-0"><i class="fas fa-search text-secondary"></i></span>
+            <input type="text" class="form-control bg-light border-0 rounded-pill" id="searchInput" placeholder="Cari nopol atau merk...">
         </div>
     </div>
 
@@ -108,8 +114,8 @@ $dataKendaraan = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <td class="text-secondary small"><?= htmlspecialchars($row['keterangan'] ?: '-') ?></td>
 
                     <td class="text-center">
-                        <div class="d-flex justify-content-center gap-1">
-                            <button type="button" class="btn-action btn-detail-kendaraan text-info" style="border:none; background:transparent;"
+                        <div class="d-flex justify-content-center gap-1 btn-actions">
+                            <button type="button" class="btn-action btn-detail-kendaraan text-info"
                                 title="Detail"
                                 data-nopol="<?= htmlspecialchars($row['no_polisi'], ENT_QUOTES, 'UTF-8') ?>"
                                 data-jenis="<?= htmlspecialchars($row['jenis'], ENT_QUOTES, 'UTF-8') ?>"
@@ -120,7 +126,7 @@ $dataKendaraan = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <i class="fas fa-eye"></i>
                             </button>
 
-                            <button type="button" class="btn-action btn-edit-kendaraan text-primary" style="border:none; background:transparent;"
+                            <button type="button" class="btn-action btn-edit-kendaraan text-primary"
                                 title="Edit"
                                 data-id="<?= $row['id'] ?>"
                                 data-nopol="<?= htmlspecialchars($row['no_polisi'], ENT_QUOTES, 'UTF-8') ?>"
@@ -131,7 +137,7 @@ $dataKendaraan = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <i class="fas fa-pen"></i>
                             </button>
 
-                            <button type="button" class="btn-action btn-delete-kendaraan text-danger" style="border:none; background:transparent;"
+                            <button type="button" class="btn-action btn-delete-kendaraan text-danger"
                                 title="Hapus" data-id="<?= $row['id'] ?>">
                                 <i class="fas fa-trash"></i>
                             </button>
@@ -146,24 +152,25 @@ $dataKendaraan = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <div class="modal fade" id="modalKendaraan" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0">
                 <h5 class="modal-title fw-bold" id="modalTitleKendaraan">Tambah Kendaraan</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form action="proses_master_kendaraan.php" method="POST" enctype="multipart/form-data" id="formKendaraan">
                 <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
                     <input type="hidden" name="id" id="inputIdKendaraan">
                     <input type="hidden" name="act" id="inputActKendaraan" value="tambah">
                     
                     <div class="row mb-3">
                         <div class="col-6">
                             <label class="form-label small fw-bold">No. Polisi</label>
-                            <input type="text" name="no_polisi" id="inputNopolKendaraan" class="form-control text-uppercase fw-bold" placeholder="B 1234 XX" required>
+                            <input type="text" name="no_polisi" id="inputNopolKendaraan" class="form-control rounded-3 bg-light border-0 text-uppercase fw-bold" placeholder="B 1234 XX" required>
                         </div>
                         <div class="col-6">
                             <label class="form-label small fw-bold">Jenis</label>
-                            <select name="jenis" id="inputJenisKendaraan" class="form-select">
+                            <select name="jenis" id="inputJenisKendaraan" class="form-select rounded-3 bg-light border-0">
                                 <option value="Motor">Motor</option>
                                 <option value="Mobil">Mobil</option>
                             </select>
@@ -172,12 +179,12 @@ $dataKendaraan = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Merk & Model</label>
-                        <input type="text" name="merk_model" id="inputMerkKendaraan" class="form-control" placeholder="Contoh: Honda Vario 150" required>
+                        <input type="text" name="merk_model" id="inputMerkKendaraan" class="form-control rounded-3 bg-light border-0 py-2" placeholder="Contoh: Honda Vario 150" required>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Status Operasional</label>
-                        <select name="status" id="inputStatusKendaraan" class="form-select">
+                        <select name="status" id="inputStatusKendaraan" class="form-select rounded-3 bg-light border-0 py-2">
                             <option value="Siap">Siap Operasi</option>
                             <option value="Servis">Sedang Servis</option>
                             <option value="Rusak">Rusak / Tidak Layak</option>
@@ -186,17 +193,17 @@ $dataKendaraan = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Keterangan Tambahan</label>
-                        <textarea name="keterangan" id="inputKetKendaraan" class="form-control" rows="2" placeholder="Cth: Pajak mati bulan depan..."></textarea>
+                        <textarea name="keterangan" id="inputKetKendaraan" class="form-control rounded-3 bg-light border-0" rows="2" placeholder="Cth: Pajak mati bulan depan..."></textarea>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Foto Kendaraan</label>
-                        <input type="file" name="foto" class="form-control">
+                        <input type="file" name="foto" class="form-control rounded-3 bg-light border-0">
                         <div class="form-text text-secondary">* Kosongkan jika tidak ada foto.</div>
                     </div>
                 </div>
                 <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-white border" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4 fw-semibold" data-bs-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-primary px-4 shadow-sm">Simpan</button>
                 </div>
             </form>

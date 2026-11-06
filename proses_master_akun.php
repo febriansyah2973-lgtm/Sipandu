@@ -1,6 +1,17 @@
 <?php
-session_start();
 require_once 'config/database.php';
+require_once 'config/csrf.php';
+require_once 'config/auth.php';
+require_once 'config/audit.php';
+
+auth_session_start();
+$current_user_id = auth_require_login();
+$role = auth_require_roles(['admin', 'administrator']);
+
+if (!csrf_validate_request()) {
+    http_response_code(419);
+    exit('CSRF token tidak valid');
+}
 
 $act = $_GET['act'] ?? $_POST['act'] ?? '';
 $targetDir = "assets/img/users/";
@@ -12,20 +23,29 @@ if (!file_exists($targetDir)) {
 try {
     // --- 1. UPDATE STATUS (DENGAN PROTEKSI DIRI SENDIRI) ---
     if ($act == 'update_status') {
-        $id = $_POST['id'];
+        $id = (int)($_POST['id'] ?? 0);
+        if ($id <= 0) {
+            echo "error";
+            exit;
+        }
         
         // PROTEKSI BETON: Cek apakah ID target sama dengan ID Login
-        if ($id == $_SESSION['id_user']) {
+        if ($id == $current_user_id) {
             echo "error_self"; // Kirim sinyal error ke Javascript
             exit;
         }
 
-        $statusBaru = $_POST['status_baru'];
+        $statusBaru = $_POST['status_baru'] ?? '';
+        if (!in_array($statusBaru, ['Aktif', 'Nonaktif'], true)) {
+            echo "error";
+            exit;
+        }
         $isActive = ($statusBaru === 'Aktif') ? 1 : 0;
 
         // Update Sinkronisasi 3 Kolom
         $stmt = $pdo->prepare("UPDATE users SET status = ?, status_akun = ?, is_active = ? WHERE id = ?");
         $stmt->execute([$statusBaru, $statusBaru, $isActive, $id]);
+        audit_log_event('akun.update_status', ['target_id' => $id, 'status' => $statusBaru]);
 
         echo "success";
         exit;
@@ -33,12 +53,18 @@ try {
 
     // --- 2. TAMBAH AKUN BARU ---
     if ($act == 'tambah') {
-        $nama     = htmlspecialchars($_POST['nama']);
-        $username = htmlspecialchars($_POST['username']);
-        $pass     = password_hash($_POST['password'], PASSWORD_DEFAULT);
+        $nama     = htmlspecialchars(trim($_POST['nama'] ?? ''));
+        $username = htmlspecialchars(trim($_POST['username'] ?? ''));
+        $rawPass  = (string)($_POST['password'] ?? '');
+        $pass     = password_hash($rawPass, PASSWORD_DEFAULT);
         $role     = $_POST['role'] ?? 'User'; 
         $status   = $_POST['status'] ?? 'Aktif';
         $isActive = ($status === 'Aktif') ? 1 : 0;
+
+        if ($nama === '' || $username === '' || $rawPass === '') {
+            header("Location: index.php?page=master_akun&msg=invalid");
+            exit;
+        }
         
         $fotoNama = null;
         if (!empty($_FILES['foto']['name'])) {
@@ -51,14 +77,24 @@ try {
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$nama, $username, $pass, $role, $status, $status, $isActive, $fotoNama]);
 
+        $lastId = $pdo->lastInsertId();
+        $kode   = 'USR-' . str_pad($lastId, 3, '0', STR_PAD_LEFT);
+        $pdo->prepare("UPDATE users SET kode_personil = ? WHERE id = ?")->execute([$kode, $lastId]);
+        audit_log_event('akun.create', ['target_id' => (int)$lastId, 'username' => $username, 'role' => $role]);
+
         header("Location: index.php?page=master_akun&msg=added");
+        exit;
     
     // --- 3. EDIT AKUN ---
     } elseif ($act == 'edit') {
-        $id       = $_POST['id'];
+        $id       = (int)($_POST['id'] ?? 0);
+        if ($id <= 0) {
+            header("Location: index.php?page=master_akun&msg=invalid");
+            exit;
+        }
         
         // Proteksi: Jangan biarkan edit status diri sendiri jadi Nonaktif lewat form edit
-        if ($id == $_SESSION['id_user'] && isset($_POST['status']) && $_POST['status'] == 'Nonaktif') {
+        if ($id == $current_user_id && isset($_POST['status']) && $_POST['status'] == 'Nonaktif') {
              // Paksa tetap aktif jika user mencoba bunuh diri
              $status = 'Aktif';
              $isActive = 1;
@@ -67,9 +103,14 @@ try {
              $isActive = ($status === 'Aktif') ? 1 : 0;
         }
 
-        $nama     = htmlspecialchars($_POST['nama']);
-        $username = htmlspecialchars($_POST['username']);
+        $nama     = htmlspecialchars(trim($_POST['nama'] ?? ''));
+        $username = htmlspecialchars(trim($_POST['username'] ?? ''));
         $role     = $_POST['role'] ?? 'User';
+
+        if ($nama === '' || $username === '') {
+            header("Location: index.php?page=master_akun&msg=invalid");
+            exit;
+        }
 
         $params = [$nama, $username, $role, $status, $status, $isActive];
         $sqlBase = "UPDATE users SET nama_lengkap=?, username=?, role=?, status=?, status_akun=?, is_active=?";
@@ -99,15 +140,21 @@ try {
 
         $stmt = $pdo->prepare($sqlBase);
         $stmt->execute($params);
+        audit_log_event('akun.update', ['target_id' => $id, 'username' => $username, 'role' => $role]);
 
         header("Location: index.php?page=master_akun&msg=updated");
+        exit;
 
     // --- 4. HAPUS AKUN ---
     } elseif ($act == 'hapus') {
-        $id = $_GET['id'];
+        $id = (int)($_GET['id'] ?? $_POST['id'] ?? 0);
+        if ($id <= 0) {
+            header("Location: index.php?page=master_akun&msg=invalid");
+            exit;
+        }
         
-        if ($id == $_SESSION['id_user']) {
-            echo "<script>alert('Eror: Tidak bisa menghapus akun sendiri!'); window.location='index.php?page=master_akun';</script>";
+        if ($id == $current_user_id) {
+            header("Location: index.php?page=master_akun&msg=self_delete_blocked");
             exit;
         }
 
@@ -117,11 +164,17 @@ try {
         if ($img && file_exists($targetDir . $img)) { unlink($targetDir . $img); }
         
         $pdo->prepare("DELETE FROM users WHERE id=?")->execute([$id]);
+        audit_log_event('akun.delete', ['target_id' => $id]);
         
         header("Location: index.php?page=master_akun&msg=deleted");
+        exit;
     }
 
 } catch (PDOException $e) {
-    die("Error Database: " . $e->getMessage());
+    header("Location: index.php?page=master_akun&msg=error");
+    exit;
 }
+
+header("Location: index.php?page=master_akun");
+exit;
 ?>

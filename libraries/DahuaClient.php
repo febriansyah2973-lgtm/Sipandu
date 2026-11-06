@@ -31,6 +31,11 @@ class DahuaClient {
         $user = $this->config['user'];
         $pass = $this->config['pass'];
 
+        if (!function_exists('curl_init')) {
+            $this->logError("Gagal akses $url. Extension cURL tidak aktif.");
+            return false;
+        }
+
         $ch = curl_init();
         curl_setopt_array($ch, [
             CURLOPT_URL            => $url,

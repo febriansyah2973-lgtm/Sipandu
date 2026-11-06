@@ -1,18 +1,36 @@
 <?php
-session_start();
 require_once 'config/database.php';
+require_once 'config/auth.php';
+require_once 'config/csrf.php';
+
+auth_session_start();
+$userId = auth_require_login('index.php?page=login');
 
 if (isset($_POST['update_akun'])) {
-    $userId    = $_SESSION['id_user'] ?? $_SESSION['user_id'];
-    $nama      = htmlspecialchars($_POST['nama'] ?? '');
-    $email     = htmlspecialchars($_POST['email'] ?? '');
-    $no_hp     = htmlspecialchars($_POST['no_hp'] ?? '');
-    $bahasa    = htmlspecialchars($_POST['bahasa'] ?? 'id');
-    $timezone  = htmlspecialchars($_POST['timezone'] ?? 'Asia/Jakarta');
+    if (!csrf_validate_request()) {
+        http_response_code(419);
+        exit('CSRF token tidak valid');
+    }
+
+    $nama      = trim((string)($_POST['nama'] ?? ''));
+    $email     = trim((string)($_POST['email'] ?? ''));
+    $no_hp     = trim((string)($_POST['no_hp'] ?? ''));
+    $bahasa    = trim((string)($_POST['bahasa'] ?? 'id'));
+    $timezone  = trim((string)($_POST['timezone'] ?? 'Asia/Jakarta'));
     $dark_mode = isset($_POST['dark_mode']) ? 1 : 0;
     
     $new_pass  = $_POST['new_pass'] ?? '';
     $conf_pass = $_POST['conf_pass'] ?? '';
+
+    if ($nama === '') {
+        header("Location: index.php?page=akun_saya&status=invalid");
+        exit;
+    }
+
+    if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        header("Location: index.php?page=akun_saya&status=invalid_email");
+        exit;
+    }
 
     try {
         $pdo->beginTransaction();
@@ -28,11 +46,23 @@ if (isset($_POST['update_akun'])) {
                 WHERE id = ?";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$nama, $email, $no_hp, $bahasa, $timezone, $dark_mode, $userId]);
+        $_SESSION['nama_lengkap'] = $nama;
 
         // 2. Ganti Foto Profil (Anti-Sampah)
         if (!empty($_FILES['foto_profil']['name'])) {
             $dir = "uploads/profil/";
             $ext = strtolower(pathinfo($_FILES["foto_profil"]["name"], PATHINFO_EXTENSION));
+            $allowedExt = ['jpg', 'jpeg', 'png', 'webp'];
+            if (!in_array($ext, $allowedExt, true) || (int)($_FILES['foto_profil']['size'] ?? 0) > 2 * 1024 * 1024) {
+                $pdo->rollBack();
+                header("Location: index.php?page=akun_saya&status=invalid_photo");
+                exit;
+            }
+
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+
             $file_name = "profil_" . $userId . "_" . time() . "." . $ext;
 
             // Hapus file lama jika bukan default
@@ -40,7 +70,7 @@ if (isset($_POST['update_akun'])) {
             $old->execute([$userId]);
             $resOld = $old->fetch();
             
-            if ($resOld['foto_profil'] != 'default.png' && file_exists($dir . $resOld['foto_profil'])) {
+            if (!empty($resOld['foto_profil']) && $resOld['foto_profil'] != 'default.png' && file_exists($dir . $resOld['foto_profil'])) {
                 unlink($dir . $resOld['foto_profil']);
             }
 
@@ -70,3 +100,6 @@ if (isset($_POST['update_akun'])) {
         exit;
     }
 }
+
+header('Location: index.php?page=akun_saya');
+exit;

@@ -1,13 +1,20 @@
 document.addEventListener('DOMContentLoaded', function() {
+    function getCsrfToken() {
+        return window.APP_CSRF_TOKEN || '';
+    }
     
     // =========================================================
     // 0. FITUR PENCARIAN GLOBAL (BERLAKU DI SEMUA MASTER)
     // =========================================================
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
+        const tableWrapper = searchInput.closest('.card-master, .card');
+        const table = tableWrapper ? tableWrapper.querySelector('table') : document.querySelector('table');
+        const rows = table ? table.querySelectorAll('tbody tr') : [];
+
         searchInput.addEventListener('keyup', function() {
-            let val = this.value.toLowerCase();
-            document.querySelectorAll('#dataTable tbody tr').forEach(tr => {
+            const val = this.value.toLowerCase();
+            rows.forEach(tr => {
                 tr.style.display = tr.innerText.toLowerCase().includes(val) ? '' : 'none';
             });
         });
@@ -113,6 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const btnDeleteBarang = e.target.closest('.btn-delete');
         if (btnDeleteBarang && document.getElementById('formBarang')) {
             const id = btnDeleteBarang.dataset.id;
+            const csrfToken = getCsrfToken();
             Swal.fire({
                 title: 'Hapus Barang?',
                 text: "Riwayat peminjaman barang ini akan dihapus!",
@@ -125,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const form = document.createElement('form');
                     form.method = 'POST';
                     form.action = 'proses_master_barang.php';
-                    form.innerHTML = `<input type="hidden" name="act" value="hapus"><input type="hidden" name="id" value="${id}">`;
+                    form.innerHTML = `<input type="hidden" name="act" value="hapus"><input type="hidden" name="id" value="${id}"><input type="hidden" name="csrf_token" value="${csrfToken}">`;
                     document.body.appendChild(form);
                     form.submit();
                 }
@@ -152,6 +160,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const d = btnDetailAkun.dataset;
             document.getElementById('detailAkunNama').innerText = d.nama;
             document.getElementById('detailAkunUsername').innerText = '@' + d.username;
+            document.getElementById('detailAkunKode').innerText = d.kode || '-';
             
             let roleTeks = (d.role || '').toUpperCase();
             if(d.jabatan) roleTeks += ' (' + d.jabatan + ')';
@@ -201,6 +210,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const btnDeleteAkun = e.target.closest('.btn-delete-akun');
         if (btnDeleteAkun) {
             const id = btnDeleteAkun.dataset.id;
+            const csrfToken = getCsrfToken();
             Swal.fire({
                 title: 'Yakin hapus akun?',
                 text: "Data ini akan hilang permanen!",
@@ -210,7 +220,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 confirmButtonText: 'Ya, Hapus!'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    window.location.href = 'index.php?page=master_akun&delete_id=' + id;
+                    window.location.href = 'proses_master_akun.php?act=hapus&id=' + encodeURIComponent(id)
+                        + '&csrf_token=' + encodeURIComponent(csrfToken);
                 }
             });
         }
@@ -237,6 +248,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('detailPersonilRole').innerText = (d.role || '').toUpperCase();
             document.getElementById('detailPersonilCabang').innerText = d.cabang;
             document.getElementById('detailPersonilShift').innerText = d.shift;
+            document.getElementById('detailPersonilKode').innerText = d.kode || '-';
             
             const badge = document.getElementById('detailPersonilStatus');
             if(d.status === 'Aktif') {
@@ -309,6 +321,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const btnDeletePersonil = e.target.closest('.btn-delete-personil');
         if (btnDeletePersonil) {
             const id = btnDeletePersonil.dataset.id;
+            const csrfToken = getCsrfToken();
             Swal.fire({
                 title: 'Hapus Personil?',
                 text: "Data tidak bisa dikembalikan!",
@@ -318,7 +331,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 confirmButtonText: 'Ya, Hapus!'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    window.location.href = 'proses_master_personil.php?act=hapus&id=' + id;
+                    window.location.href = 'proses_master_personil.php?act=hapus&id=' + encodeURIComponent(id)
+                        + '&csrf_token=' + encodeURIComponent(csrfToken);
                 }
             });
         }
@@ -340,6 +354,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (btnDetailCabang) {
             const d = btnDetailCabang.dataset;
             document.getElementById('detailCabangNama').innerText = d.nama;
+            document.getElementById('detailCabangKode').innerText = d.kode || '-';
             document.getElementById('detailCabangAlamat').innerText = d.alamat || 'Belum ada data alamat.';
             document.getElementById('detailCabangKontak').innerText = d.kontak || 'Belum ada data kontak.';
             bootstrap.Modal.getOrCreateInstance(document.getElementById('modalDetailCabang')).show();
@@ -358,6 +373,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const btnDeleteCabang = e.target.closest('.btn-delete-cabang');
         if (btnDeleteCabang) {
             const id = btnDeleteCabang.dataset.id;
+            const csrfToken = getCsrfToken();
             Swal.fire({
                 title: 'Hapus Cabang?',
                 text: "Data yang dihapus tidak dapat dikembalikan!",
@@ -367,7 +383,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 confirmButtonText: 'Ya, Hapus!'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    window.location.href = 'proses_cabang.php?hapus=' + id;
+                    window.location.href = 'proses_cabang.php?hapus=' + encodeURIComponent(id)
+                        + '&csrf_token=' + encodeURIComponent(csrfToken);
                 }
             });
         }
@@ -435,6 +452,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const btnDeleteKendaraan = e.target.closest('.btn-delete-kendaraan');
         if (btnDeleteKendaraan && document.getElementById('formKendaraan')) {
             const id = btnDeleteKendaraan.dataset.id;
+            const csrfToken = getCsrfToken();
             Swal.fire({
                 title: 'Hapus Kendaraan?',
                 text: "Data armada ini akan dihapus permanen!",
@@ -447,7 +465,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const form = document.createElement('form');
                     form.method = 'POST';
                     form.action = 'proses_master_kendaraan.php';
-                    form.innerHTML = `<input type="hidden" name="act" value="hapus"><input type="hidden" name="id" value="${id}">`;
+                    form.innerHTML = `<input type="hidden" name="act" value="hapus"><input type="hidden" name="id" value="${id}"><input type="hidden" name="csrf_token" value="${csrfToken}">`;
                     document.body.appendChild(form);
                     form.submit();
                 }
@@ -481,11 +499,11 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('detailLokasiLong').innerText = d.long || '-';
             document.getElementById('detailLokasiQrCode').innerText = d.qr;
             document.getElementById('detailLokasiKet').innerText = d.ket || 'Tidak ada keterangan.';
+            document.getElementById('detailLokasiCabang').innerText = d.cabang || 'Pusat';
             document.getElementById('detailLokasiQrImage').src = d.qrurl;
             
             const mapLink = document.getElementById('detailLokasiMapLink');
             if(d.lat && d.long) {
-                // PERBAIKAN: Gunakan Template Literals yang benar
                 mapLink.href = `https://www.google.com/maps?q=${d.lat},${d.long}`;
                 mapLink.style.display = 'block';
             } else {
@@ -501,6 +519,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('inputActLokasi').value = 'edit';
             document.getElementById('inputIdLokasi').value = d.id;
             document.getElementById('inputNamaLokasi').value = d.nama;
+            document.getElementById('inputCabangLokasi').value = d.cabangId || '';
             document.getElementById('inputLatLokasi').value = d.lat;
             document.getElementById('inputLongLokasi').value = d.long;
             document.getElementById('inputKetLokasi').value = d.ket;
@@ -516,6 +535,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const btnDeleteLokasi = e.target.closest('.btn-delete-lokasi');
         if (btnDeleteLokasi) {
             const id = btnDeleteLokasi.dataset.id;
+            const csrfToken = getCsrfToken();
             Swal.fire({
                 title: 'Hapus Lokasi Checkpoint?',
                 text: "Riwayat scan pada lokasi ini mungkin akan terpengaruh!",
@@ -525,7 +545,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 confirmButtonText: 'Ya, Hapus!'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    window.location.href = 'proses_master_lokasi.php?act=hapus&id=' + id;
+                    window.location.href = 'proses_master_lokasi.php?act=hapus&id=' + encodeURIComponent(id)
+                        + '&csrf_token=' + encodeURIComponent(csrfToken);
                 }
             });
         }
@@ -573,6 +594,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (btnDetailShift) {
             const d = btnDetailShift.dataset;
             document.getElementById('detailShiftNama').innerText = d.nama;
+            document.getElementById('detailShiftKode').innerText = d.kode || '-';
             document.getElementById('detailShiftMasuk').innerText = d.masuk;
             document.getElementById('detailShiftPulang').innerText = d.pulang;
             document.getElementById('detailShiftDurasi').innerText = d.durasi;
@@ -610,10 +632,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 confirmButtonText: 'Ya, Hapus!'
             }).then((result) => {
                 if (result.isConfirmed) {
+                    const csrfToken = getCsrfToken();
                     const form = document.createElement('form');
                     form.method = 'POST';
                     form.action = 'proses_master_shift.php';
-                    form.innerHTML = `<input type="hidden" name="act" value="hapus"><input type="hidden" name="id" value="${id}">`;
+                    form.innerHTML = `<input type="hidden" name="act" value="hapus"><input type="hidden" name="id" value="${id}"><input type="hidden" name="csrf_token" value="${csrfToken}">`;
                     document.body.appendChild(form);
                     form.submit();
                 }

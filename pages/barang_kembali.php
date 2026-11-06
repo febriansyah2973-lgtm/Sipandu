@@ -1,4 +1,3 @@
-<link rel="stylesheet" href="assets/css/app.css">
 <style>
     .avatar-circle { width: 40px; height: 40px; background-color: #e3f2fd; color: #0d6efd; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; }
     .badge-soft-warning { background-color: #fff3cd; color: #ffc107; border: 1px solid #ffecb5; }
@@ -7,6 +6,12 @@
 
 <?php
 require_once 'config/database.php';
+require_once 'config/csrf.php';
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+$csrf_token = csrf_token_value();
+
 if (isset($_GET['status'])) {
     if ($_GET['status'] == 'success') {
         echo "<script>Swal.fire({icon: 'success', title: 'Selesai', text: 'Barang telah dikembalikan ke stok.', timer: 2000, showConfirmButton: false});</script>";
@@ -128,6 +133,7 @@ $data_kembali = $pdo->query($sql)->fetchAll();
             </div>
             <form action="proses_pengembalian.php" method="POST">
                 <div class="modal-body text-center p-4">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
                     <input type="hidden" name="act" value="kembali">
                     <input type="hidden" name="id_pinjam" id="id_pinjam">
                     <input type="hidden" name="barang_id" id="barang_id">

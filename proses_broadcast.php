@@ -1,21 +1,30 @@
 <?php
-session_start();
 require_once 'config/database.php';
 require_once 'config/helper_notif.php';
+require_once 'config/auth.php';
+require_once 'config/csrf.php';
 
-// Proteksi: Hanya Admin yang bisa akses file ini
-if (!isset($_SESSION['id_user']) || strtolower($_SESSION['role']) != 'admin') {
-    header("Location: index.php?page=login");
-    exit;
-}
+auth_session_start();
+auth_require_login('index.php?page=login');
+auth_require_roles(['admin', 'administrator']);
 
 $act = $_POST['act'] ?? '';
 
 if ($act == 'send_broadcast') {
-    $judul    = htmlspecialchars($_POST['judul']);
-    $pesan    = htmlspecialchars($_POST['pesan']);
-    $kategori = $_POST['kategori']; // info, warning, atau alert
-    $admin_nama = $_SESSION['nama_lengkap'];
+    if (!csrf_validate_request()) {
+        http_response_code(419);
+        exit('CSRF token tidak valid');
+    }
+
+    $judul    = trim((string)($_POST['judul'] ?? ''));
+    $pesan    = trim((string)($_POST['pesan'] ?? ''));
+    $kategori = trim((string)($_POST['kategori'] ?? ''));
+
+    // --- BAGIAN YANG DIPERBAIKI (Penambahan 'broadcast_alert') ---
+    if ($judul === '' || $pesan === '' || !in_array($kategori, ['info', 'warning', 'alert', 'broadcast_alert'], true)) {
+        header("Location: index.php?page=broadcast&status=invalid");
+        exit;
+    }
 
     try {
         // 1. Ambil SEMUA ID User yang statusnya Aktif
@@ -24,14 +33,13 @@ if ($act == 'send_broadcast') {
 
         if ($all_users) {
             // 2. Kirim notifikasi ke setiap user dalam loop
-            // Kita gunakan fungsi sendNotification yang sudah ada di helper_notif.php
             sendNotification(
                 $pdo, 
-                $all_users, // Parameter array ID (fungsi kita sudah support array)
+                $all_users, // Parameter array ID
                 $kategori, 
                 "[BROADCAST] $judul", 
                 $pesan, 
-                'index.php?page=notifikasi' // Klik notif langsung ke riwayat
+                'index.php?page=notifikasi' 
             );
 
             // 3. Beri info ke Admin kalau broadcast sudah selesai
@@ -43,7 +51,8 @@ if ($act == 'send_broadcast') {
         }
 
     } catch (Exception $e) {
-        die("Gagal Broadcast: " . $e->getMessage());
+        header("Location: index.php?page=broadcast&status=error");
+        exit;
     }
 } else {
     header("Location: index.php?page=broadcast");

@@ -1,37 +1,73 @@
 <?php
 require_once 'helpers/OnvifHelper.php';
-$nvr_ip   = '192.168.1.100';
-$nvr_user = 'admin';
-$nvr_pass = 'password123';
+$config_file = __DIR__ . '/../config/cctv_config.json';
+$cfg = [];
+if (file_exists($config_file)) {
+    $raw = file_get_contents($config_file);
+    $decoded = json_decode($raw, true);
+    if (is_array($decoded)) {
+        $cfg = $decoded;
+    }
+}
+
+$nvr_ip   = trim((string)($cfg['ip'] ?? ''));
+$nvr_user = trim((string)($cfg['user'] ?? ''));
+$nvr_pass = (string)($cfg['pass'] ?? '');
 $streamLink = "";
 $pesanError = "";
 
 if (isset($_POST['btn_play'])) {
+    if ($nvr_ip === '' || $nvr_user === '' || $nvr_pass === '') {
+        $pesanError = "Konfigurasi NVR belum lengkap di config/cctv_config.json.";
+    }
+
     $tgl = $_POST['tanggal'];
     $jam = $_POST['waktu'];
-    $onvif = new OnvifHelper($nvr_ip, $nvr_user, $nvr_pass);
-    $token = $onvif->getProfileToken();
+    if (empty($pesanError)) {
+        $onvif = new OnvifHelper($nvr_ip, $nvr_user, $nvr_pass);
+        $token = $onvif->getProfileToken();
 
-    if ($token) {
-        $baseRtsp = $onvif->getReplayUri($token);
+        if ($token) {
+            $baseRtsp = $onvif->getReplayUri($token);
         
-        if ($baseRtsp) {
-            $waktuLokal = strtotime("$tgl $jam");
-            $waktuUTC   = gmdate('Ymd\THis\Z', $waktuLokal);
-            $finalRtsp = $baseRtsp . "&starttime=" . $waktuUTC;
-            $go2rtc_api = "http://localhost:1984/api/streams?src=" . urlencode($finalRtsp) . "&name=playback_cctv1";
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $go2rtc_api);
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT"); 
-            curl_exec($ch);
-            curl_close($ch);
-            $streamLink = "http://localhost:1984/stream.html?src=playback_cctv1";
+            if ($baseRtsp) {
+                $waktuLokal = strtotime("$tgl $jam");
+                $waktuUTC   = gmdate('Ymd\THis\Z', $waktuLokal);
+                $finalRtsp = $baseRtsp . "&starttime=" . $waktuUTC;
+                $go2rtc_api = "http://localhost:1984/api/streams?src=" . urlencode($finalRtsp) . "&name=playback_cctv1";
+                $streamCreated = false;
 
+                if (function_exists('curl_init')) {
+                    $ch = curl_init();
+                    curl_setopt($ch, CURLOPT_URL, $go2rtc_api);
+                    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
+                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+                    $result = curl_exec($ch);
+                    $streamCreated = ($result !== false);
+                    curl_close($ch);
+                } else {
+                    $context = stream_context_create([
+                        'http' => [
+                            'method' => 'PUT',
+                            'timeout' => 10
+                        ]
+                    ]);
+                    $result = @file_get_contents($go2rtc_api, false, $context);
+                    $streamCreated = ($result !== false);
+                }
+
+                if ($streamCreated) {
+                    $streamLink = "http://localhost:1984/stream.html?src=playback_cctv1";
+                } else {
+                    $pesanError = "Gagal menyiapkan stream playback ke go2rtc.";
+                }
+            } else {
+                $pesanError = "Gagal mendapatkan Link RTSP dari NVR.";
+            }
         } else {
-            $pesanError = "Gagal mendapatkan Link RTSP dari NVR.";
+            $pesanError = "Gagal koneksi ke ONVIF NVR. Cek konfigurasi IP/User/Pass.";
         }
-    } else {
-        $pesanError = "Gagal koneksi ke ONVIF NVR. Cek IP/User/Pass.";
     }
 }
 ?>

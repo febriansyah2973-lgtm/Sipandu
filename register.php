@@ -71,13 +71,18 @@ if (isset($_POST['register'])) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body, html { height: 100%; margin: 0; font-family: 'Inter', sans-serif; }
+        body, html { height: 100%; margin: 0; font-family: 'Inter', sans-serif; background: #f8fafc; }
         .login-left-side {
             background: linear-gradient(135deg, rgba(13, 110, 253, 0.4) 0%, rgba(10, 88, 202, 0.5) 100%), url('assets/img/background_login.png');
             background-size: cover; background-position: center; color: white; display: flex; align-items: center; padding: 4rem; clip-path: polygon(0 0, 100% 0, 85% 100%, 0% 100%);
         }
         .form-control, .form-select { border-radius: 8px; background: #f8f9fa; }
-        @media (max-width: 991.98px) { .login-left-side { display: none; } }
+        .login-logo { max-width: 120px; }
+        .form-card { background: #ffffff; border-radius: 24px; box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08); border: 1px solid rgba(13, 110, 253, 0.09); padding: 2rem; }
+        @media (max-width: 991.98px) {
+            .login-left-side { display: none; }
+            .register-form-side { background: linear-gradient(rgba(248, 250, 252, 0.9), rgba(248, 250, 252, 0.9)), url('assets/img/background_login.png') center / cover; }
+        }
     </style>
 </head>
 <body>
@@ -91,8 +96,11 @@ if (isset($_POST['register'])) {
                 <p>Silakan lengkapi data sesuai penempatan tugas Anda.</p>
             </div>
         </div>
-        <div class="col-lg-6 d-flex align-items-center justify-content-center bg-white p-4" style="overflow-y: auto;">
+        <div class="col-lg-6 d-flex align-items-center justify-content-center bg-white p-4 register-form-side" style="overflow-y: auto;">
             <div class="w-100" style="max-width: 550px;">
+                <div class="text-center mb-4">
+                    <img src="assets/img/logo-target.jpeg" alt="Target Integrated Security Services" style="max-width: 140px; width: 100%;">
+                </div>
                 <h3 class="fw-bold mb-4 text-center text-lg-start">Buat Akun Baru</h3>
                 <?php if($error): ?> <div class="alert alert-danger py-2 small"><?= $error ?></div> <?php endif; ?>
                 

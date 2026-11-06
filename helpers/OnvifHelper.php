@@ -17,6 +17,10 @@ class OnvifHelper {
             <s:Body>' . $xmlBody . '</s:Body>
         </s:Envelope>';
 
+        if (!function_exists('curl_init')) {
+            return false;
+        }
+
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $this->mediaUrl);
         curl_setopt($ch, CURLOPT_POST, true);

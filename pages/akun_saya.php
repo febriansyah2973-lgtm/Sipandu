@@ -1,5 +1,8 @@
 <?php
 // 1. Proteksi & Identifikasi User
+require_once 'config/csrf.php';
+$csrf_token = csrf_token_value();
+
 $userId = $_SESSION['id_user'] ?? $_SESSION['user_id'] ?? null; 
 if (!$userId) { echo "<script>window.location='login.php';</script>"; exit; }
 
@@ -14,9 +17,16 @@ $stmt->execute([$userId]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
 // 3. Logic Folder Foto
-$fotoPath = (!empty($user['foto_profil']) && file_exists('uploads/profil/'.$user['foto_profil'])) 
-            ? 'uploads/profil/'.$user['foto_profil'] 
-            : 'uploads/profil/default.png'; 
+$fotoName = $user['foto_profil'] ?? $user['foto'] ?? '';
+$fotoPath = 'assets/img/logo-target.jpeg';
+
+$searchDirs = ['uploads/profil/', 'assets/uploads/profil/', 'assets/img/users/'];
+foreach ($searchDirs as $dir) {
+    if (!empty($fotoName) && $fotoName !== 'default.png' && $fotoName !== 'default.jpg' && file_exists($dir . $fotoName)) {
+        $fotoPath = $dir . $fotoName;
+        break;
+    }
+}
 ?>
 
 <div class="container-fluid px-4 py-4 animate__animated animate__fadeIn">
@@ -33,6 +43,7 @@ $fotoPath = (!empty($user['foto_profil']) && file_exists('uploads/profil/'.$user
     </div>
 
     <form action="proses_akun_saya.php" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
         <div class="row g-4">
             
             <div class="col-lg-4">
@@ -160,13 +171,27 @@ $fotoPath = (!empty($user['foto_profil']) && file_exists('uploads/profil/'.$user
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    // Live Preview
+    // Live Preview Foto
     document.getElementById('inputFoto').onchange = function () {
         const [file] = this.files;
         if (file) {
             document.getElementById('previewFoto').src = URL.createObjectURL(file);
         }
     };
+
+    // Live Preview Dark Mode Toggle
+    const darkSwitch = document.getElementById('darkSwitch');
+    if (darkSwitch) {
+        darkSwitch.addEventListener('change', function() {
+            if (this.checked) {
+                document.documentElement.classList.add('dark-mode');
+                document.documentElement.setAttribute('data-bs-theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark-mode');
+                document.documentElement.setAttribute('data-bs-theme', 'light');
+            }
+        });
+    }
 
     // Handler SweetAlert & URL Cleanup
     document.addEventListener('DOMContentLoaded', function() {

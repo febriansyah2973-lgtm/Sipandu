@@ -42,6 +42,10 @@ window.adjustZoom = function(delta) {
 document.addEventListener("DOMContentLoaded", function() {
     console.log("App Logic Ready.");
 
+    function getCsrfToken() {
+        return window.APP_CSRF_TOKEN || '';
+    }
+
     function fixModalBackdrop(modalElement) {
         modalElement.addEventListener('hidden.bs.modal', function () {
             document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
@@ -62,7 +66,9 @@ document.addEventListener("DOMContentLoaded", function() {
             confirmButtonText: 'Ya, Hapus!'
         }).then((result) => {
             if (result.isConfirmed) {
-                window.location.href = url;
+                const csrfToken = encodeURIComponent(getCsrfToken());
+                const separator = url.includes('?') ? '&' : '?';
+                window.location.href = `${url}${separator}csrf_token=${csrfToken}`;
             }
         });
     }
@@ -362,6 +368,7 @@ if (modalPersonil) {
                         formData.append('act', 'update_status');
                         formData.append('id', id);
                         formData.append('status_baru', statusBaru);
+                        formData.append('csrf_token', getCsrfToken());
 
                         fetch('proses_master_akun.php', {
                             method: 'POST',

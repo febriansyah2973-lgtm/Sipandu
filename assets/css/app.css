@@ -1,59 +1,100 @@
+/* ============================================
+   SIPANDU - App Utility & Components CSS
+   Command Center Tactical Badges, Avatars & Cards
+   ============================================ */
+
 .card-hover {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    border: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    background: #131b2e !important;
 }
+
 .card-hover:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08) !important;
+    transform: translateY(-2px);
+    border-color: rgba(56, 189, 248, 0.3) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
 }
 
 .badge-soft {
-    padding: 0.5em 0.85em;
+    padding: 0.4em 0.85em;
     font-weight: 600;
-    border-radius: 50rem;
-    font-size: 0.75rem;
-    letter-spacing: 0.3px;
+    border-radius: 9999px;
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
 }
-.badge-soft-primary { background-color: #e3f2fd; color: #0d47a1; border: 1px solid #bbdefb; }
-.badge-soft-warning { background-color: #fff8e1; color: #b76e00; border: 1px solid #ffeebb; }
-.badge-soft-success { background-color: #e8f5e9; color: #1b5e20; border: 1px solid #c8e6c9; }
-.badge-soft-danger  { background-color: #ffebee; color: #b71c1c; border: 1px solid #ffcdd2; }
+
+.badge-soft-primary { 
+    background-color: rgba(56, 189, 248, 0.12); 
+    color: #38bdf8; 
+    border: 1px solid rgba(56, 189, 248, 0.25); 
+}
+
+.badge-soft-warning { 
+    background-color: rgba(245, 158, 11, 0.12); 
+    color: #fbbf24; 
+    border: 1px solid rgba(245, 158, 11, 0.25); 
+}
+
+.badge-soft-success { 
+    background-color: rgba(16, 185, 129, 0.12); 
+    color: #34d399; 
+    border: 1px solid rgba(16, 185, 129, 0.25); 
+}
+
+.badge-soft-danger { 
+    background-color: rgba(239, 68, 68, 0.12); 
+    color: #f87171; 
+    border: 1px solid rgba(239, 68, 68, 0.25); 
+}
 
 .avatar-circle {
-    width: 40px;
-    height: 40px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    font-size: 14px;
-    color: white;
-    background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
-    box-shadow: 0 3px 6px rgba(78, 115, 223, 0.25);
-    border: 2px solid #fff;
+    font-size: 13px;
+    color: #0b0f19;
+    background: #38bdf8;
+    box-shadow: 0 2px 8px rgba(56, 189, 248, 0.3);
+    border: 2px solid #131b2e;
 }
 
-.table-hover tbody tr:hover { background-color: #f8f9fc; }
-.table td { vertical-align: middle; }
+.table-hover tbody tr:hover { 
+    background-color: rgba(255, 255, 255, 0.03); 
+}
+
+.table td { 
+    vertical-align: middle; 
+}
 
 .info-box {
-    background: linear-gradient(to right, #e3f2fd, #ffffff);
-    border-left: 5px solid #4e73df;
+    background: #1c263d;
+    border-left: 4px solid #38bdf8;
+    border-radius: 0 6px 6px 0;
+    color: #f1f5f9;
+    padding: 14px 18px;
 }
 
-.animate-fade-up { animation: fadeUp 0.5s cubic-bezier(0.165, 0.84, 0.44, 1) forwards; }
+.animate-fade-up { 
+    animation: fadeUp 0.4s cubic-bezier(0.165, 0.84, 0.44, 1) forwards; 
+}
+
 @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(20px); }
+    from { opacity: 0; transform: translateY(12px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
 .modal {
     z-index: 1060 !important;
 }
+
 .modal-backdrop {
     z-index: 1050 !important;
 }
+
 body.modal-open {
     overflow: hidden;
 }

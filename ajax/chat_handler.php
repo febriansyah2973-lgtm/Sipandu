@@ -1,11 +1,37 @@
 <?php
-session_start();
 require_once '../config/database.php';
+require_once '../config/auth.php';
+require_once '../config/csrf.php';
+require_once '../config/audit.php';
 
-if (!isset($_SESSION['id_user'])) { exit; }
+auth_session_start();
+$my_id = auth_current_user_id();
+if ($my_id <= 0) { exit; }
+
+if (!function_exists('chat_rate_limit_allow')) {
+    function chat_rate_limit_allow($key, $maxHits, $windowSeconds) {
+        auth_session_start();
+
+        if (!isset($_SESSION['chat_rate_limit']) || !is_array($_SESSION['chat_rate_limit'])) {
+            $_SESSION['chat_rate_limit'] = [];
+        }
+
+        $now = time();
+        $entry = $_SESSION['chat_rate_limit'][$key] ?? ['start' => $now, 'hits' => 0];
+        $elapsed = $now - (int)$entry['start'];
+
+        if ($elapsed >= $windowSeconds) {
+            $entry = ['start' => $now, 'hits' => 0];
+        }
+
+        $entry['hits']++;
+        $_SESSION['chat_rate_limit'][$key] = $entry;
+
+        return ((int)$entry['hits'] <= (int)$maxHits);
+    }
+}
 
 $act   = $_POST['act'] ?? $_GET['act'] ?? '';
-$my_id = $_SESSION['id_user'];
 $uploadDir = "../assets/uploads/chat/";
 
 // Buat folder jika belum ada
@@ -14,20 +40,72 @@ if (!file_exists($uploadDir)) { mkdir($uploadDir, 0777, true); }
 try {
     // --- 1. KIRIM PESAN (+ FILE) ---
     if ($act == 'send') {
-        $msg      = htmlspecialchars($_POST['message'] ?? '');
-        $reply_id = !empty($_POST['reply_id']) ? $_POST['reply_id'] : NULL;
+        if (!chat_rate_limit_allow('chat_send_' . $my_id, 30, 60)) {
+            http_response_code(429);
+            audit_log_event('chat.rate_limited', ['action' => 'send']);
+            exit('Terlalu sering mengirim pesan');
+        }
+
+        if (!csrf_validate_request()) {
+            http_response_code(419);
+            exit('CSRF token tidak valid');
+        }
+
+        $rawMsg   = (string)($_POST['message'] ?? '');
+        if (mb_strlen($rawMsg) > 2000) {
+            http_response_code(422);
+            exit('Panjang pesan melebihi batas');
+        }
+        $msg      = htmlspecialchars($rawMsg);
+        $reply_id = !empty($_POST['reply_id']) ? (int)$_POST['reply_id'] : NULL;
         $attach   = NULL;
 
         // LOGIKA UPLOAD FILE
         if (!empty($_FILES['file']['name'])) {
             $ext = strtolower(pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION));
             $allowed = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx'];
+            $allowedMimeByExt = [
+                'jpg' => ['image/jpeg'],
+                'jpeg' => ['image/jpeg'],
+                'png' => ['image/png'],
+                'gif' => ['image/gif'],
+                'pdf' => ['application/pdf'],
+                'doc' => ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+                'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip'],
+                'xls' => ['application/vnd.ms-excel', 'application/octet-stream'],
+                'xlsx' => ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/zip']
+            ];
             
             if (in_array($ext, $allowed)) {
-                $newName = time() . "_" . uniqid() . "." . $ext;
+                if ((int)($_FILES['file']['size'] ?? 0) > 5 * 1024 * 1024) {
+                    http_response_code(413);
+                    exit('Ukuran file terlalu besar');
+                }
+
+                $mime = '';
+                if (function_exists('finfo_open')) {
+                    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                    if ($finfo) {
+                        $mime = (string)finfo_file($finfo, $_FILES['file']['tmp_name']);
+                        finfo_close($finfo);
+                    }
+                }
+
+                $allowedMimes = $allowedMimeByExt[$ext] ?? [];
+                if ($mime !== '' && !in_array($mime, $allowedMimes, true)) {
+                    http_response_code(415);
+                    audit_log_event('chat.upload_blocked', ['reason' => 'mime_mismatch', 'ext' => $ext, 'mime' => $mime]);
+                    exit('Tipe file tidak diizinkan');
+                }
+
+                $newName = bin2hex(random_bytes(16)) . "." . $ext;
                 if (move_uploaded_file($_FILES['file']['tmp_name'], $uploadDir . $newName)) {
                     $attach = $newName;
                 }
+            } else {
+                http_response_code(415);
+                audit_log_event('chat.upload_blocked', ['reason' => 'extension_not_allowed', 'ext' => $ext]);
+                exit('Ekstensi file tidak diizinkan');
             }
         }
 
@@ -35,13 +113,31 @@ try {
         if (!empty($msg) || !empty($attach)) {
             $stmt = $pdo->prepare("INSERT INTO chat_messages (user_id, reply_to_id, message, attachment, created_at) VALUES (?, ?, ?, ?, NOW())");
             $stmt->execute([$my_id, $reply_id, $msg, $attach]);
+            audit_log_event('chat.send', [
+                'reply_to_id' => $reply_id,
+                'has_attachment' => $attach ? 1 : 0
+            ]);
         }
         echo "sent";
     }
 
     // --- 2. HAPUS PESAN ---
     elseif ($act == 'delete') {
-        $id = $_POST['id'];
+        if (!chat_rate_limit_allow('chat_delete_' . $my_id, 20, 60)) {
+            http_response_code(429);
+            audit_log_event('chat.rate_limited', ['action' => 'delete']);
+            exit('Terlalu sering menghapus pesan');
+        }
+
+        if (!csrf_validate_request()) {
+            http_response_code(419);
+            exit('CSRF token tidak valid');
+        }
+
+        $id = (int)($_POST['id'] ?? 0);
+        if ($id <= 0) {
+            exit('invalid');
+        }
         
         // Hapus file fisik dulu jika ada
         $stmt = $pdo->prepare("SELECT attachment FROM chat_messages WHERE id = ? AND user_id = ?");
@@ -53,11 +149,19 @@ try {
         // Hapus data di DB
         $stmt = $pdo->prepare("DELETE FROM chat_messages WHERE id = ? AND user_id = ?");
         $stmt->execute([$id, $my_id]);
+        audit_log_event('chat.delete', ['message_id' => $id]);
         echo "deleted";
     }
 
     // --- 3. LOAD PESAN ---
     elseif ($act == 'load') {
+        if (!chat_rate_limit_allow('chat_load_' . $my_id, 120, 60)) {
+            http_response_code(429);
+            audit_log_event('chat.rate_limited', ['action' => 'load']);
+            echo "<div class='text-center text-muted small py-3'>Terlalu sering refresh chat. Coba lagi sebentar.</div>";
+            exit;
+        }
+
         $sql = "SELECT c.*, u.nama_lengkap, u.foto, u.role,
                        r.message AS reply_msg, r.attachment AS reply_att, ru.nama_lengkap AS reply_user
                 FROM chat_messages c 
@@ -136,6 +240,10 @@ try {
                 </div>
             </div>";
         }
+    } else {
+        http_response_code(400);
+        echo "invalid_action";
+        exit;
     }
 } catch (Exception $e) { echo "error"; }
 ?>

@@ -17,12 +17,12 @@ require_once 'config/database.php';
 $mulai = $_GET['mulai'] ?? date('Y-m-01');
 $selesai = $_GET['selesai'] ?? date('Y-m-d');
 $keyword = $_GET['keyword'] ?? '';
-$sql = "SELECT * FROM tamu 
+$sql = "SELECT * FROM visitors 
         WHERE (DATE(waktu_masuk) BETWEEN :mulai AND :selesai)";
 $params = ['mulai' => $mulai, 'selesai' => $selesai];
 
 if (!empty($keyword)) {
-    $sql .= " AND (nama_tamu LIKE :keyword OR instansi LIKE :keyword OR bertemu_dengan LIKE :keyword)";
+    $sql .= " AND (nama_tamu LIKE :keyword OR instansi LIKE :keyword OR bertemu_dengan LIKE :keyword OR keperluan LIKE :keyword)";
     $params['keyword'] = "%$keyword%";
 }
 $sql .= " ORDER BY waktu_masuk DESC";

@@ -4,6 +4,7 @@
     .chat-bg { background-color: #e5ddd5; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); opacity: 0.9; }
     .reply-preview { border-left: 4px solid #00a884; background: #f0f2f5; font-size: 0.85rem; }
     .file-preview { border-left: 4px solid #0d6efd; background: #e7f1ff; font-size: 0.85rem; }
+    #chatStatus { min-height: 0; }
 </style>
 
 <div class="card border-0 shadow-lg rounded-4 overflow-hidden h-100 d-flex flex-column">
@@ -49,6 +50,7 @@
     </div>
 
     <div class="card-footer bg-white p-3 border-top">
+        <div id="chatStatus" class="small text-danger mb-2" role="alert"></div>
         <form id="formChat" class="d-flex align-items-center gap-2" enctype="multipart/form-data">
             <input type="hidden" id="replyIdInput" name="reply_id">
             
@@ -68,6 +70,8 @@
 </div>
 
 <script>
+    const CHAT_CSRF_TOKEN = <?= json_encode($csrf_token ?? csrf_token_value()) ?>;
+
     const chatBox = document.getElementById('chatBox');
     const input = document.getElementById('pesanInput');
     const fileInput = document.getElementById('fileInput');
@@ -82,6 +86,12 @@
     const replyName = document.getElementById('replyName');
     const replyText = document.getElementById('replyText');
     const fileName = document.getElementById('fileName');
+    const chatStatus = document.getElementById('chatStatus');
+    const sendButton = document.querySelector('#formChat button[type="submit"]');
+
+    function showChatStatus(message = '') {
+        chatStatus.textContent = message;
+    }
 
     // 1. EVENT SAAT FILE DIPILIH
     fileInput.addEventListener('change', function() {
@@ -102,13 +112,17 @@
 
     // 2. LOAD CHAT
     function loadChat() {
-        fetch('ajax/chat_handler.php?act=load')
-            .then(res => res.text())
+        fetch('ajax/chat_handler.php?act=load', { credentials: 'same-origin' })
+            .then(res => {
+                if (!res.ok) throw new Error('Gagal memuat percakapan');
+                return res.text();
+            })
             .then(data => {
                 const isBottom = chatBox.scrollHeight - chatBox.clientHeight <= chatBox.scrollTop + 100;
                 chatBox.innerHTML = data;
                 if (isBottom) chatBox.scrollTop = chatBox.scrollHeight;
-            });
+            })
+            .catch(() => showChatStatus('Percakapan belum dapat dimuat. Silakan coba lagi.'));
     }
 
     // 3. KIRIM PESAN (DENGAN FILE)
@@ -120,18 +134,26 @@
 
         const fd = new FormData(this);
         fd.append('act', 'send');
+        fd.append('csrf_token', CHAT_CSRF_TOKEN);
+
+        sendButton.disabled = true;
+        showChatStatus('Mengirim pesan...');
 
         // Reset Input Visual biar cepat
         input.value = '';
         cancelReply();
         cancelFile();
         
-        fetch('ajax/chat_handler.php', { method: 'POST', body: fd })
-            .then(res => res.text())
+        fetch('ajax/chat_handler.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(res => res.text().then(data => ({ ok: res.ok, data })))
             .then(data => {
+                if (!data.ok || data.data !== 'sent') throw new Error(data.data || 'Pesan gagal dikirim');
+                showChatStatus('');
                 loadChat();
                 setTimeout(() => chatBox.scrollTop = chatBox.scrollHeight, 200);
-            });
+            })
+            .catch(error => showChatStatus(error.message || 'Pesan gagal dikirim. Silakan coba lagi.'))
+            .finally(() => { sendButton.disabled = false; });
     });
 
     // 4. REPLY FUNCTION
@@ -164,6 +186,7 @@
             const fd = new FormData();
             fd.append('act', 'delete');
             fd.append('id', id);
+            fd.append('csrf_token', CHAT_CSRF_TOKEN);
             fetch('ajax/chat_handler.php', { method: 'POST', body: fd }).then(() => loadChat());
         }
     }

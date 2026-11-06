@@ -1,4 +1,3 @@
-<link rel="stylesheet" href="assets/css/dashboard.css">
 <?php
 require_once 'config/database.php';
 

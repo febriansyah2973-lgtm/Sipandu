@@ -100,6 +100,7 @@ document.addEventListener("DOMContentLoaded", function() {
         fd.append('qr_content', qr);
         fd.append('koordinat', coord);
         fd.append('is_manual', manual ? '1' : '0');
+        fd.append('csrf_token', window.APP_CSRF_TOKEN || '');
 
         fetch('proses_patroli.php', { method: 'POST', body: fd })
         .then(res => res.json())
@@ -133,6 +134,12 @@ document.addEventListener("DOMContentLoaded", function() {
 function triggerSelfie(cp_id, coord) {
     let localStream = null;
 
+    // Lepas kamera scanner QR dulu; pause() saja tidak melepas track kamera
+    // sehingga getUserMedia untuk selfie bisa gagal dengan NotReadableError.
+    const releaseScanner = (html5QrCode && isScanning)
+        ? html5QrCode.stop().then(() => { isScanning = false; })
+        : Promise.resolve();
+
     Swal.fire({
         title: 'Selfie Kehadiran',
         html: `
@@ -149,16 +156,15 @@ function triggerSelfie(cp_id, coord) {
         allowOutsideClick: false,
         didOpen: () => {
             const video = document.getElementById('vSelfie');
-            
-            // Minta akses kamera depan (user)
-            navigator.mediaDevices.getUserMedia({ 
-                video: { 
+
+            releaseScanner.then(() => navigator.mediaDevices.getUserMedia({
+                video: {
                     facingMode: "user",
                     width: { ideal: 640 },
                     height: { ideal: 480 }
-                }, 
-                audio: false 
-            })
+                },
+                audio: false
+            }))
             .then(stream => {
                 localStream = stream;
                 video.srcObject = stream;
@@ -167,7 +173,7 @@ function triggerSelfie(cp_id, coord) {
             })
             .catch(err => {
                 console.error("Kamera Error: ", err);
-                Swal.showValidationMessage(`Gagal akses kamera: ${err.name}. Pastikan koneksi HTTPS!`);
+                Swal.showValidationMessage(`Gagal akses kamera: ${err.name}. Tutup aplikasi lain yang memakai kamera lalu coba lagi.`);
             });
         },
         willClose: () => {
@@ -200,8 +206,8 @@ function triggerSelfie(cp_id, coord) {
         if (res.isConfirmed) {
             saveFinalReport(cp_id, coord, res.value);
         } else {
-            // Jika batal, nyalakan lagi scanner QR
-            if(html5QrCode) html5QrCode.resume();
+            // Jika batal, scanner sudah di-stop total, jadi nyalakan ulang dari awal
+            if (cameras.length) startScanner(cameras[currentCameraIdx].id);
         }
     });
 }
@@ -214,6 +220,7 @@ function triggerSelfie(cp_id, coord) {
         fd.append('checkpoint_id', id);
         fd.append('koordinat', coord);
         fd.append('foto_selfie', imgBase64);
+        fd.append('csrf_token', window.APP_CSRF_TOKEN || '');
 
         fetch('proses_patroli.php', { method: 'POST', body: fd })
         .then(res => res.json())
@@ -222,7 +229,9 @@ function triggerSelfie(cp_id, coord) {
                 Swal.fire('Berhasil!', 'Patroli tersimpan dengan foto selfie.', 'success')
                 .then(() => location.reload());
             } else {
-                Swal.fire('Gagal', d.message, 'error');
+                Swal.fire('Gagal', d.message, 'error').then(() => {
+                    if (cameras.length) startScanner(cameras[currentCameraIdx].id);
+                });
             }
         });
     }

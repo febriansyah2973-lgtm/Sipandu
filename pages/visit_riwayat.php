@@ -30,7 +30,7 @@ if (isset($_POST['act']) && $_POST['act'] == 'checkout') {
         $admins = getAdminIds($pdo);
         sendNotification($pdo, $admins, 'success', 'Tamu Telah Keluar ??', "$nama_tamu telah melakukan checkout dan meninggalkan area.", 'index.php?page=visit_riwayat');
 
-        echo "<script>Swal.fire({icon: 'success', title: 'Checkout Berhasil', text: 'Tamu telah keluar area.', timer: 1500, showConfirmButton: false});</script>";
+        echo "<script>document.addEventListener('DOMContentLoaded', function() { Swal.fire({icon: 'success', title: 'Checkout Berhasil', text: 'Tamu telah keluar area.', timer: 1500, showConfirmButton: false}); });</script>";
     }
 }
 
@@ -160,7 +160,7 @@ $riwayat = $pdo->query("SELECT * FROM visitors WHERE status = 'Keluar' ORDER BY 
                             </button>
                         </td>
                         <td class="text-end pe-4">
-                            <form method="POST" onsubmit="return confirm('Konfirmasi Checkout?');">
+                            <form method="POST" class="form-checkout-tamu">
                                 <input type="hidden" name="act" value="checkout">
                                 <input type="hidden" name="id" value="<?= $row['id'] ?>">
                                 <button type="submit" class="btn btn-danger btn-sm rounded-pill px-3">
@@ -245,6 +245,23 @@ document.getElementById('searchHistory').addEventListener('keyup', function() {
     rows.forEach(row => {
         let text = row.innerText.toLowerCase();
         row.style.display = text.includes(filter) ? '' : 'none';
+    });
+});
+
+document.querySelectorAll('.form-checkout-tamu').forEach(function(form) {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        Swal.fire({
+            title: 'Konfirmasi Checkout?',
+            text: 'Tamu akan ditandai sudah keluar dari area.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Ya, Checkout',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) { form.submit(); }
+        });
     });
 });
 </script>
